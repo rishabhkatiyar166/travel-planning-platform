@@ -7,6 +7,7 @@ import Home from "./pages/Home";
 import PlanTrip from "./pages/PlanTrip";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import SavedTrips from "./pages/SavedTrips";
 import TripDetails from "./pages/TripDetails";
@@ -33,6 +34,11 @@ function App() {
             <Route path="/login" element={<Login />} />
 
             <Route path="/signup" element={<Signup />} />
+
+            <Route
+              path="/reset-password"
+              element={<ResetPassword />}
+            />
           </Route>
 
           {/* ========================================
@@ -46,11 +52,20 @@ function App() {
 
             <Route path="/saved-trips" element={<SavedTrips />} />
 
-            <Route path="/saved-trips/:id" element={<TripDetails />} />
+            <Route
+              path="/saved-trips/:id"
+              element={<TripDetails />}
+            />
 
-            <Route path="/saved-trips/:id/edit" element={<EditTrip />} />
+            <Route
+              path="/saved-trips/:id/edit"
+              element={<EditTrip />}
+            />
 
-            <Route path="/destination-places" element={<DestinationPlaces />} />
+            <Route
+              path="/destination-places"
+              element={<DestinationPlaces />}
+            />
           </Route>
 
           {/* ========================================
