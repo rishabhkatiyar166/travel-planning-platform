@@ -875,7 +875,7 @@ function TripDetails() {
       return;
     }
 
-    refreshTrip();
+    await refreshTrip();
 
     resetItineraryForm();
 
@@ -936,7 +936,7 @@ function TripDetails() {
       return;
     }
 
-    refreshTrip();
+    await refreshTrip();
 
     setEditingItineraryId(null);
 
@@ -977,7 +977,7 @@ function TripDetails() {
       resetItineraryForm();
     }
 
-    refreshTrip();
+    await refreshTrip();
   };
 
   const totalExpenses = useMemo(() => {
@@ -1630,6 +1630,8 @@ function TripDetails() {
     if (!trip || !user) {
       return;
     }
+
+    setExpenseError("");
 
     const updatedExpenses = expenses.filter(
       (expense) => expense.id !== expenseId,
