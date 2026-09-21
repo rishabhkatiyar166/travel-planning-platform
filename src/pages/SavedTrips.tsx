@@ -29,6 +29,7 @@ function SavedTrips() {
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
 
   /*
    * ========================================
@@ -109,7 +110,7 @@ function SavedTrips() {
     return () => {
       mounted = false;
     };
-  }, [user, navigate]);
+  }, [user, navigate, retryKey]);
 
   /*
    * Keep the selected filter synchronized with
@@ -347,9 +348,26 @@ function SavedTrips() {
             <div
               role="alert"
               aria-live="polite"
-              className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4"
             >
-              {error}
+              <p className="text-sm font-semibold text-red-800">
+                Unable to load your trips
+              </p>
+
+              <p className="mt-1 text-sm text-red-700">
+                Please check your connection and try again.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setError("");
+                  setRetryKey((key) => key + 1);
+                }}
+                className="mt-3 rounded-lg bg-red-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-800"
+              >
+                Try Again
+              </button>
             </div>
           )}
           <SavedTripsSkeleton />

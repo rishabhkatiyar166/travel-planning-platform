@@ -1,16 +1,6 @@
-import{
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
-import {
-  Link,
-  useNavigate,
-  useParams,
-} from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import {
   MapContainer,
@@ -125,7 +115,6 @@ const expenseCategories: ExpenseCategory[] = [
   "Other",
 ];
 
-
 /*
  * ========================================
  * MAP VIEW CONTROLLER
@@ -213,11 +202,7 @@ function TripDetailsSkeleton() {
   );
 }
 
-function MapView({
-  origin,
-  destination,
-  route,
-}: MapViewProps) {
+function MapView({ origin, destination, route }: MapViewProps) {
   const map = useMap();
 
   useEffect(() => {
@@ -325,7 +310,9 @@ function ErrorState({
             {title}
           </h3>
 
-          <p className={`leading-6 text-red-700 ${compact ? "mt-1 text-sm" : "mt-2 text-sm"}`}>
+          <p
+            className={`leading-6 text-red-700 ${compact ? "mt-1 text-sm" : "mt-2 text-sm"}`}
+          >
             {message}
           </p>
 
@@ -381,6 +368,8 @@ function TripDetails() {
   const [trip, setTrip] = useState<Trip | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [loadRetryKey, setLoadRetryKey] = useState(0);
 
   /*
    * ========================================
@@ -388,11 +377,11 @@ function TripDetails() {
    * ========================================
    */
 
-  const [isAddingItineraryItem, setIsAddingItineraryItem] =
-    useState(false);
+  const [isAddingItineraryItem, setIsAddingItineraryItem] = useState(false);
 
-  const [editingItineraryId, setEditingItineraryId] =
-    useState<number | null>(null);
+  const [editingItineraryId, setEditingItineraryId] = useState<number | null>(
+    null,
+  );
 
   const [itineraryError, setItineraryError] = useState("");
 
@@ -403,14 +392,20 @@ function TripDetails() {
     notes: "",
   });
 
-  const [completedItineraryItems, setCompletedItineraryItems] =
-    useState<Record<number, boolean>>({});
+  const [completedItineraryItems, setCompletedItineraryItems] = useState<
+    Record<number, boolean>
+  >({});
 
   const [expenses, setExpenses] = useState<TripExpense[]>([]);
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<number | null>(null);
-  const [expenseCategoryFilter, setExpenseCategoryFilter] = useState<ExpenseCategory | "All">("All");
-  const [expenseSort, setExpenseSort] = useState<"newest" | "oldest" | "highest" | "lowest">("newest");
+  const [isSavingExpense, setIsSavingExpense] = useState(false);
+  const [expenseCategoryFilter, setExpenseCategoryFilter] = useState<
+    ExpenseCategory | "All"
+  >("All");
+  const [expenseSort, setExpenseSort] = useState<
+    "newest" | "oldest" | "highest" | "lowest"
+  >("newest");
   const [expenseError, setExpenseError] = useState("");
   const [expenseForm, setExpenseForm] = useState({
     amount: "",
@@ -429,7 +424,6 @@ function TripDetails() {
   const [deleteConfirmation, setDeleteConfirmation] =
     useState<DeleteConfirmation>(null);
 
-
   /*
    * ========================================
    * ROUTE STATE
@@ -446,7 +440,9 @@ function TripDetails() {
 
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
 
-  const shareFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shareFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   /*
    * ========================================
@@ -477,10 +473,9 @@ function TripDetails() {
 
     const loadTrip = async () => {
       try {
-        const selectedTrip = await getTripById(
-          id,
-          user.id
-        );
+        setLoadError("");
+
+        const selectedTrip = await getTripById(id, user.id);
 
         if (!mounted) {
           return;
@@ -502,7 +497,7 @@ function TripDetails() {
           setExpenseSort("newest");
           setExpenseError("");
           setCompletedItineraryItems(
-            selectedTrip.completedItineraryItems ?? {}
+            selectedTrip.completedItineraryItems ?? {},
           );
         } else {
           setExpenses([]);
@@ -522,6 +517,11 @@ function TripDetails() {
         }
 
         console.error("Load trip error:", error);
+
+        setLoadError(
+          "Unable to load this trip. Please check your connection and try again.",
+        );
+
         setTrip(null);
         setExpenses([]);
         setCompletedItineraryItems({});
@@ -537,7 +537,7 @@ function TripDetails() {
     return () => {
       mounted = false;
     };
-  }, [id, user, navigate]);
+  }, [id, user, navigate, loadRetryKey]);
 
   /*
    * ========================================
@@ -558,9 +558,7 @@ function TripDetails() {
     ) {
       setRoute(null);
 
-      setRouteError(
-        "Route information is unavailable for this trip."
-      );
+      setRouteError("Route information is unavailable for this trip.");
 
       return;
     }
@@ -578,46 +576,31 @@ function TripDetails() {
          * longitude,latitude
          */
 
-        const origin =
-          `${trip.originLongitude},${trip.originLatitude}`;
+        const origin = `${trip.originLongitude},${trip.originLatitude}`;
 
-        const destination =
-          `${trip.destinationLongitude},${trip.destinationLatitude}`;
+        const destination = `${trip.destinationLongitude},${trip.destinationLatitude}`;
 
-        const url =
-          `https://router.project-osrm.org/route/v1/driving/${origin};${destination}?overview=full&geometries=geojson`;
+        const url = `https://router.project-osrm.org/route/v1/driving/${origin};${destination}?overview=full&geometries=geojson`;
 
         const response = await fetch(url, {
           signal: controller.signal,
         });
 
         if (!response.ok) {
-          throw new Error(
-            "Unable to calculate route."
-          );
+          throw new Error("Unable to calculate route.");
         }
 
         const data = await response.json();
 
-        if (
-          !data.routes ||
-          data.routes.length === 0
-        ) {
-          throw new Error(
-            "No route was found between these locations."
-          );
+        if (!data.routes || data.routes.length === 0) {
+          throw new Error("No route was found between these locations.");
         }
 
         const selectedRoute = data.routes[0];
 
-        const coordinates =
-          selectedRoute.geometry.coordinates.map(
-            (point: [number, number]) =>
-              [
-                point[1],
-                point[0],
-              ] as [number, number],
-          );
+        const coordinates = selectedRoute.geometry.coordinates.map(
+          (point: [number, number]) => [point[1], point[0]] as [number, number],
+        );
 
         setRoute({
           coordinates,
@@ -625,24 +608,16 @@ function TripDetails() {
           duration: selectedRoute.duration,
         });
       } catch (error) {
-        if (
-          error instanceof DOMException &&
-          error.name === "AbortError"
-        ) {
+        if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
 
-        console.error(
-          "Route error:",
-          error,
-        );
+        console.error("Route error:", error);
 
         setRoute(null);
 
         setRouteError(
-          error instanceof Error
-            ? error.message
-            : "Unable to calculate route.",
+          error instanceof Error ? error.message : "Unable to calculate route.",
         );
       } finally {
         setRouteLoading(false);
@@ -668,18 +643,13 @@ function TripDetails() {
     }
 
     try {
-      const updatedTrip = await getTripById(
-        id,
-        user.id
-      );
+      const updatedTrip = await getTripById(id, user.id);
 
       setTrip(updatedTrip);
 
       if (updatedTrip) {
         setExpenses(updatedTrip.expenses ?? []);
-        setCompletedItineraryItems(
-          updatedTrip.completedItineraryItems ?? {}
-        );
+        setCompletedItineraryItems(updatedTrip.completedItineraryItems ?? {});
       } else {
         setExpenses([]);
         setCompletedItineraryItems({});
@@ -702,18 +672,13 @@ function TripDetails() {
 
     const days = Number(match[0]);
 
-    return Number.isFinite(days) && days > 0
-      ? days
-      : 1;
+    return Number.isFinite(days) && days > 0 ? days : 1;
   }, [trip?.duration]);
 
   const itineraryByDay = useMemo(() => {
     const items = trip?.itinerary ?? [];
 
-    const days = Array.from(
-      { length: durationDays },
-      (_, index) => index + 1
-    );
+    const days = Array.from({ length: durationDays }, (_, index) => index + 1);
 
     return days.map((day) => ({
       day,
@@ -728,29 +693,23 @@ function TripDetails() {
     }));
   }, [trip?.itinerary, durationDays]);
 
-  const totalItineraryItems =
-    trip?.itinerary?.length ?? 0;
+  const totalItineraryItems = trip?.itinerary?.length ?? 0;
 
   const completedItineraryCount = useMemo(() => {
     if (!trip?.itinerary) {
       return 0;
     }
 
-    return trip.itinerary.filter(
-      (item) => completedItineraryItems[item.id]
-    ).length;
+    return trip.itinerary.filter((item) => completedItineraryItems[item.id])
+      .length;
   }, [trip?.itinerary, completedItineraryItems]);
 
   const itineraryProgress =
     totalItineraryItems > 0
-      ? Math.round(
-          (completedItineraryCount / totalItineraryItems) * 100
-        )
+      ? Math.round((completedItineraryCount / totalItineraryItems) * 100)
       : 0;
 
-  const toggleItineraryItemCompletion = async (
-    itemId: number
-  ) => {
+  const toggleItineraryItemCompletion = async (itemId: number) => {
     if (!trip || !user) {
       return;
     }
@@ -761,25 +720,23 @@ function TripDetails() {
     };
 
     try {
-      const updatedTrip = await updateTrip(
-        trip.id,
-        user.id,
-        { completedItineraryItems: updated }
-      );
+      const updatedTrip = await updateTrip(trip.id, user.id, {
+        completedItineraryItems: updated,
+      });
 
       if (!updatedTrip) {
-        setItineraryError("Unable to update itinerary completion. Please try again.");
+        setItineraryError(
+          "Unable to update itinerary completion. Please try again.",
+        );
         return;
       }
 
       setTrip(updatedTrip);
-      setCompletedItineraryItems(
-        updatedTrip.completedItineraryItems ?? {}
-      );
+      setCompletedItineraryItems(updatedTrip.completedItineraryItems ?? {});
     } catch (error) {
       console.error("Update itinerary completion error:", error);
       setItineraryError(
-        "Unable to update itinerary completion. Please try again."
+        "Unable to update itinerary completion. Please try again.",
       );
     }
   };
@@ -797,14 +754,11 @@ function TripDetails() {
 
   const handleItineraryFormChange = (
     field: "day" | "title" | "time" | "notes",
-    value: string
+    value: string,
   ) => {
     setItineraryForm((current) => ({
       ...current,
-      [field]:
-        field === "day"
-          ? Number(value)
-          : value,
+      [field]: field === "day" ? Number(value) : value,
     }));
   };
 
@@ -852,11 +806,7 @@ function TripDetails() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    isAddingItineraryItem,
-    editingItineraryId,
-    isAddingExpense,
-  ]);
+  }, [isAddingItineraryItem, editingItineraryId, isAddingExpense]);
 
   useEffect(() => {
     if (!deleteConfirmation) {
@@ -898,44 +848,29 @@ function TripDetails() {
 
     setItineraryError("");
 
-    const title =
-      itineraryForm.title.trim();
+    const title = itineraryForm.title.trim();
 
     if (!title) {
-      setItineraryError(
-        "Please enter an activity name."
-      );
+      setItineraryError("Please enter an activity name.");
 
       return;
     }
 
-    if (
-      itineraryForm.day < 1 ||
-      itineraryForm.day > durationDays
-    ) {
-      setItineraryError(
-        `Please choose a day between 1 and ${durationDays}.`
-      );
+    if (itineraryForm.day < 1 || itineraryForm.day > durationDays) {
+      setItineraryError(`Please choose a day between 1 and ${durationDays}.`);
 
       return;
     }
 
-    const newItem =
-      await addItineraryItem(
-        id,
-        user.id,
-        {
-          day: itineraryForm.day,
-          title,
-          time: itineraryForm.time,
-          notes: itineraryForm.notes.trim(),
-        }
-      );
+    const newItem = await addItineraryItem(id, user.id, {
+      day: itineraryForm.day,
+      title,
+      time: itineraryForm.time,
+      notes: itineraryForm.notes.trim(),
+    });
 
     if (!newItem) {
-      setItineraryError(
-        "Unable to add this activity. Please try again."
-      );
+      setItineraryError("Unable to add this activity. Please try again.");
 
       return;
     }
@@ -947,9 +882,7 @@ function TripDetails() {
     setIsAddingItineraryItem(false);
   };
 
-  const startEditingItineraryItem = (
-    item: ItineraryItem
-  ) => {
+  const startEditingItineraryItem = (item: ItineraryItem) => {
     setEditingItineraryId(item.id);
 
     setItineraryError("");
@@ -965,55 +898,40 @@ function TripDetails() {
   };
 
   const handleUpdateItineraryItem = async () => {
-    if (
-      !user ||
-      !id ||
-      editingItineraryId === null
-    ) {
+    if (!user || !id || editingItineraryId === null) {
       return;
     }
 
     setItineraryError("");
 
-    const title =
-      itineraryForm.title.trim();
+    const title = itineraryForm.title.trim();
 
     if (!title) {
-      setItineraryError(
-        "Please enter an activity name."
-      );
+      setItineraryError("Please enter an activity name.");
 
       return;
     }
 
-    if (
-      itineraryForm.day < 1 ||
-      itineraryForm.day > durationDays
-    ) {
-      setItineraryError(
-        `Please choose a day between 1 and ${durationDays}.`
-      );
+    if (itineraryForm.day < 1 || itineraryForm.day > durationDays) {
+      setItineraryError(`Please choose a day between 1 and ${durationDays}.`);
 
       return;
     }
 
-    const updatedItem =
-      await updateItineraryItem(
-        id,
-        user.id,
-        editingItineraryId,
-        {
-          day: itineraryForm.day,
-          title,
-          time: itineraryForm.time,
-          notes: itineraryForm.notes.trim(),
-        }
-      );
+    const updatedItem = await updateItineraryItem(
+      id,
+      user.id,
+      editingItineraryId,
+      {
+        day: itineraryForm.day,
+        title,
+        time: itineraryForm.time,
+        notes: itineraryForm.notes.trim(),
+      },
+    );
 
     if (!updatedItem) {
-      setItineraryError(
-        "Unable to update this activity. Please try again."
-      );
+      setItineraryError("Unable to update this activity. Please try again.");
 
       return;
     }
@@ -1025,10 +943,7 @@ function TripDetails() {
     resetItineraryForm();
   };
 
-  const requestDeleteItineraryItem = (
-    itemId: number,
-    itemLabel: string
-  ) => {
+  const requestDeleteItineraryItem = (itemId: number, itemLabel: string) => {
     deleteTriggerRef.current =
       document.activeElement instanceof HTMLButtonElement
         ? document.activeElement
@@ -1041,33 +956,22 @@ function TripDetails() {
     });
   };
 
-  const handleDeleteItineraryItem = async (
-    itemId: number
-  ) => {
+  const handleDeleteItineraryItem = async (itemId: number) => {
     if (!user || !id) {
       return;
     }
 
     setItineraryError("");
 
-    const deleted =
-      await deleteItineraryItem(
-        id,
-        user.id,
-        itemId
-      );
+    const deleted = await deleteItineraryItem(id, user.id, itemId);
 
     if (!deleted) {
-      setItineraryError(
-        "Unable to delete this activity. Please try again."
-      );
+      setItineraryError("Unable to delete this activity. Please try again.");
 
       return;
     }
 
-    if (
-      editingItineraryId === itemId
-    ) {
+    if (editingItineraryId === itemId) {
       setEditingItineraryId(null);
 
       resetItineraryForm();
@@ -1077,10 +981,7 @@ function TripDetails() {
   };
 
   const totalExpenses = useMemo(() => {
-    return expenses.reduce(
-      (total, expense) => total + expense.amount,
-      0
-    );
+    return expenses.reduce((total, expense) => total + expense.amount, 0);
   }, [expenses]);
 
   const budgetAmount = useMemo(() => {
@@ -1088,9 +989,7 @@ function TripDetails() {
       return null;
     }
 
-    const numericValue = Number(
-      trip.budget.replace(/[^0-9.]/g, "")
-    );
+    const numericValue = Number(trip.budget.replace(/[^0-9.]/g, ""));
 
     return Number.isFinite(numericValue) && numericValue > 0
       ? numericValue
@@ -1098,16 +997,11 @@ function TripDetails() {
   }, [trip?.budget]);
 
   const remainingBudget =
-    budgetAmount !== null
-      ? budgetAmount - totalExpenses
-      : null;
+    budgetAmount !== null ? budgetAmount - totalExpenses : null;
 
   const expenseProgress =
     budgetAmount !== null && budgetAmount > 0
-      ? Math.min(
-          Math.round((totalExpenses / budgetAmount) * 100),
-          100
-        )
+      ? Math.min(Math.round((totalExpenses / budgetAmount) * 100), 100)
       : 0;
 
   const budgetUsagePercentage =
@@ -1120,7 +1014,8 @@ function TripDetails() {
       return {
         level: "none" as const,
         title: "Set a trip budget to get alerts",
-        message: "Add a budget while editing your trip to track spending against it.",
+        message:
+          "Add a budget while editing your trip to track spending against it.",
       };
     }
 
@@ -1154,9 +1049,7 @@ function TripDetails() {
         .reduce((total, expense) => total + expense.amount, 0);
 
       const percentage =
-        totalExpenses > 0
-          ? Math.round((amount / totalExpenses) * 100)
-          : 0;
+        totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0;
 
       return {
         category,
@@ -1178,11 +1071,11 @@ function TripDetails() {
 
         return largest;
       },
-      null
+      null,
     );
 
     const spendingDays = new Set(
-      expenses.map((expense) => expense.date).filter(Boolean)
+      expenses.map((expense) => expense.date).filter(Boolean),
     ).size;
 
     const averageDailySpending =
@@ -1218,10 +1111,7 @@ function TripDetails() {
   }, [expenses, totalExpenses, budgetAmount]);
 
   const dailyExpenseSummary = useMemo(() => {
-    const totals = new Map<
-      string,
-      { amount: number; count: number }
-    >();
+    const totals = new Map<string, { amount: number; count: number }>();
 
     expenses.forEach((expense) => {
       const current = totals.get(expense.date) ?? {
@@ -1245,15 +1135,13 @@ function TripDetails() {
 
     const maxAmount = days.reduce(
       (maximum, day) => Math.max(maximum, day.amount),
-      0
+      0,
     );
 
     return days.map((day) => ({
       ...day,
       percentage:
-        maxAmount > 0
-          ? Math.round((day.amount / maxAmount) * 100)
-          : 0,
+        maxAmount > 0 ? Math.round((day.amount / maxAmount) * 100) : 0,
     }));
   }, [expenses]);
 
@@ -1262,7 +1150,7 @@ function TripDetails() {
       expenseCategoryFilter === "All"
         ? expenses
         : expenses.filter(
-            (expense) => expense.category === expenseCategoryFilter
+            (expense) => expense.category === expenseCategoryFilter,
           );
 
     return filteredExpenses.slice().sort((a, b) => {
@@ -1328,11 +1216,9 @@ function TripDetails() {
     const updatedExpenses = [...expenses, newExpense];
 
     try {
-      const updatedTrip = await updateTrip(
-        trip.id,
-        user.id,
-        { expenses: updatedExpenses }
-      );
+      const updatedTrip = await updateTrip(trip.id, user.id, {
+        expenses: updatedExpenses,
+      });
 
       if (!updatedTrip) {
         setExpenseError("Unable to save this expense. Please try again.");
@@ -1346,6 +1232,8 @@ function TripDetails() {
     } catch (error) {
       console.error("Add expense error:", error);
       setExpenseError("Unable to save this expense. Please try again.");
+    } finally {
+      setIsSavingExpense(false);
     }
   };
 
@@ -1395,15 +1283,13 @@ function TripDetails() {
             category: expenseForm.category,
             date: expenseForm.date,
           }
-        : expense
+        : expense,
     );
 
     try {
-      const updatedTrip = await updateTrip(
-        trip.id,
-        user.id,
-        { expenses: updatedExpenses }
-      );
+      const updatedTrip = await updateTrip(trip.id, user.id, {
+        expenses: updatedExpenses,
+      });
 
       if (!updatedTrip) {
         setExpenseError("Unable to update this expense. Please try again.");
@@ -1417,6 +1303,8 @@ function TripDetails() {
     } catch (error) {
       console.error("Update expense error:", error);
       setExpenseError("Unable to update this expense. Please try again.");
+    } finally {
+      setIsSavingExpense(false);
     }
   };
 
@@ -1425,8 +1313,7 @@ function TripDetails() {
       return;
     }
 
-    const escapeCsvValue = (value: string) =>
-      `"${value.replace(/"/g, '""')}"`;
+    const escapeCsvValue = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
     const rows = [
       ["Date", "Description", "Category", "Amount"],
@@ -1460,9 +1347,7 @@ function TripDetails() {
     URL.revokeObjectURL(url);
   };
 
-  const handleImportExpenses = async (
-    event: ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleImportExpenses = async (event: ChangeEvent<HTMLInputElement>) => {
     if (!user) {
       return;
     }
@@ -1542,13 +1427,13 @@ function TripDetails() {
 
       if (rows.length < 2) {
         setExpenseError(
-          "The CSV file must contain a header row and at least one expense."
+          "The CSV file must contain a header row and at least one expense.",
         );
         return;
       }
 
       const headers = rows[0].map((header) =>
-        header.toLowerCase().replace(/\s+/g, "").trim()
+        header.toLowerCase().replace(/\s+/g, "").trim(),
       );
 
       const dateIndex = headers.indexOf("date");
@@ -1563,7 +1448,7 @@ function TripDetails() {
         amountIndex === -1
       ) {
         setExpenseError(
-          "Invalid CSV format. Required columns: Date, Description, Category, Amount."
+          "Invalid CSV format. Required columns: Date, Description, Category, Amount.",
         );
         return;
       }
@@ -1579,7 +1464,7 @@ function TripDetails() {
         const amount = Number(amountText.replace(/₹|,/g, ""));
 
         const category = expenseCategories.find(
-          (item) => item.toLowerCase() === categoryText.toLowerCase()
+          (item) => item.toLowerCase() === categoryText.toLowerCase(),
         );
 
         if (
@@ -1604,7 +1489,7 @@ function TripDetails() {
 
       if (importedExpenses.length === 0) {
         setExpenseError(
-          "No valid expenses were found in the CSV file. Check the required columns and values."
+          "No valid expenses were found in the CSV file. Check the required columns and values.",
         );
         return;
       }
@@ -1612,11 +1497,9 @@ function TripDetails() {
       const updatedExpenses = [...expenses, ...importedExpenses];
 
       try {
-        const updatedTrip = await updateTrip(
-          trip.id,
-          user.id,
-          { expenses: updatedExpenses }
-        );
+        const updatedTrip = await updateTrip(trip.id, user.id, {
+          expenses: updatedExpenses,
+        });
 
         if (!updatedTrip) {
           setExpenseError("Unable to import expenses. Please try again.");
@@ -1637,18 +1520,18 @@ function TripDetails() {
             importedExpenses.length === 1 ? "expense" : "expenses"
           }. Skipped ${skippedRows} invalid ${
             skippedRows === 1 ? "row" : "rows"
-          }.`
+          }.`,
         );
       } else {
         window.alert(
           `Successfully imported ${importedExpenses.length} ${
             importedExpenses.length === 1 ? "expense" : "expenses"
-          }.`
+          }.`,
         );
       }
     } catch {
       setExpenseError(
-        "Unable to read the CSV file. Please check that it is a valid CSV file."
+        "Unable to read the CSV file. Please check that it is a valid CSV file.",
       );
     }
   };
@@ -1724,14 +1607,13 @@ function TripDetails() {
         // Fall through to the user-facing error below.
       }
 
-      showShareFeedback("Unable to share the trip. Please copy the page link manually.");
+      showShareFeedback(
+        "Unable to share the trip. Please copy the page link manually.",
+      );
     }
   };
 
-  const requestDeleteExpense = (
-    expenseId: number,
-    itemLabel: string
-  ) => {
+  const requestDeleteExpense = (expenseId: number, itemLabel: string) => {
     deleteTriggerRef.current =
       document.activeElement instanceof HTMLButtonElement
         ? document.activeElement
@@ -1750,15 +1632,13 @@ function TripDetails() {
     }
 
     const updatedExpenses = expenses.filter(
-      (expense) => expense.id !== expenseId
+      (expense) => expense.id !== expenseId,
     );
 
     try {
-      const updatedTrip = await updateTrip(
-        trip.id,
-        user.id,
-        { expenses: updatedExpenses }
-      );
+      const updatedTrip = await updateTrip(trip.id, user.id, {
+        expenses: updatedExpenses,
+      });
 
       if (!updatedTrip) {
         setExpenseError("Unable to delete this expense. Please try again.");
@@ -1812,12 +1692,24 @@ function TripDetails() {
     return (
       <main className="min-h-screen bg-slate-50 px-6 py-16">
         <div className="mx-auto max-w-3xl">
-          <ErrorState
-            title="Trip not found"
-            message="This trip doesn't exist or doesn't belong to your account. Check your saved trips and open it again."
-            actionLabel="Back to Saved Trips"
-            onAction={() => navigate("/saved-trips")}
-          />
+          {loadError ? (
+            <ErrorState
+              title="Unable to load trip"
+              message={loadError}
+              actionLabel="Try Again"
+              onAction={() => {
+                setLoadError("");
+                setLoadRetryKey((key) => key + 1);
+              }}
+            />
+          ) : (
+            <ErrorState
+              title="Trip not found"
+              message="This trip doesn't exist or doesn't belong to your account. Check your saved trips and open it again."
+              actionLabel="Back to Saved Trips"
+              onAction={() => navigate("/saved-trips")}
+            />
+          )}
         </div>
       </main>
     );
@@ -1829,20 +1721,11 @@ function TripDetails() {
    * ========================================
    */
 
-  const formattedDate =
-    formatTripDate(
-      trip.travelDate
-    );
+  const formattedDate = formatTripDate(trip.travelDate);
 
-  const tripStatus =
-    getTripStatus(
-      trip.travelDate
-    );
+  const tripStatus = getTripStatus(trip.travelDate);
 
-  const tripCountdown =
-    getTripCountdownText(
-      trip.travelDate
-    );
+  const tripCountdown = getTripCountdownText(trip.travelDate);
 
   /*
    * ========================================
@@ -1862,21 +1745,19 @@ function TripDetails() {
    * ========================================
    */
 
-  const originPoint: RoutePoint | null =
-    hasCoordinates
-      ? {
-          lat: trip.originLatitude!,
-          lng: trip.originLongitude!,
-        }
-      : null;
+  const originPoint: RoutePoint | null = hasCoordinates
+    ? {
+        lat: trip.originLatitude!,
+        lng: trip.originLongitude!,
+      }
+    : null;
 
-  const destinationPoint: RoutePoint | null =
-    hasCoordinates
-      ? {
-          lat: trip.destinationLatitude!,
-          lng: trip.destinationLongitude!,
-        }
-      : null;
+  const destinationPoint: RoutePoint | null = hasCoordinates
+    ? {
+        lat: trip.destinationLatitude!,
+        lng: trip.destinationLongitude!,
+      }
+    : null;
 
   /*
    * ========================================
@@ -1887,14 +1768,8 @@ function TripDetails() {
   const mapCenter: [number, number] =
     originPoint && destinationPoint
       ? [
-          (
-            originPoint.lat +
-            destinationPoint.lat
-          ) / 2,
-          (
-            originPoint.lng +
-            destinationPoint.lng
-          ) / 2,
+          (originPoint.lat + destinationPoint.lat) / 2,
+          (originPoint.lng + destinationPoint.lng) / 2,
         ]
       : [20.5937, 78.9629];
 
@@ -1973,283 +1848,256 @@ function TripDetails() {
       `}</style>
 
       <main className="trip-details-print min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
-      <div className="mx-auto max-w-5xl">
-        {shareFeedback && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="print-hide fixed bottom-6 left-1/2 z-[1000] -translate-x-1/2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-lg"
-          >
-            {shareFeedback}
-          </div>
-        )}
+        <div className="mx-auto max-w-5xl">
+          {shareFeedback && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="print-hide fixed bottom-6 left-1/2 z-[1000] -translate-x-1/2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-lg"
+            >
+              {shareFeedback}
+            </div>
+          )}
 
-        {/* ========================================
+          {/* ========================================
             HEADER
         ======================================== */}
 
-        <div className="mb-8">
-          <Link
-            to="/saved-trips"
-            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 print-hide inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:-translate-x-0.5 hover:text-slate-900"
-          >
-            <span>←</span>
-            Back to Saved Trips
-          </Link>
+          <div className="mb-8">
+            <Link
+              to="/saved-trips"
+              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 print-hide inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:-translate-x-0.5 hover:text-slate-900"
+            >
+              <span>←</span>
+              Back to Saved Trips
+            </Link>
 
-          <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:mt-7 sm:p-6 md:p-8">
-            <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Trip Details
-                </p>
+            <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:mt-7 sm:p-6 md:p-8">
+              <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Trip Details
+                  </p>
 
-                <h1 className="mt-3 break-words text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">
-                  {trip.origin}{" "}
-                  <span className="text-slate-300">
-                    →
-                  </span>{" "}
-                  {trip.destination}
-                </h1>
+                  <h1 className="mt-3 break-words text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">
+                    {trip.origin} <span className="text-slate-300">→</span>{" "}
+                    {trip.destination}
+                  </h1>
 
-                <p className="mt-3 max-w-2xl text-slate-600">
-                  Everything you need for your journey, from route details to
-                  travel information.
-                </p>
-              </div>
+                  <p className="mt-3 max-w-2xl text-slate-600">
+                    Everything you need for your journey, from route details to
+                    travel information.
+                  </p>
+                </div>
 
-              <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                <button
-                  type="button"
-                  onClick={handlePrintTrip}
-                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 print-hide inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 sm:w-auto"
-                >
-                  <span className="text-base leading-none">🖨️</span>
-                  Print Trip
-                </button>
+                <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                  <button
+                    type="button"
+                    onClick={handlePrintTrip}
+                    className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 print-hide inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 sm:w-auto"
+                  >
+                    <span className="text-base leading-none">🖨️</span>
+                    Print Trip
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={handleShareTrip}
-                  aria-label="Share this trip"
-                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 print-hide inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 sm:w-auto"
-                >
-                  <span className="text-base leading-none" aria-hidden="true">↗</span>
-                  Share Trip
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleShareTrip}
+                    aria-label="Share this trip"
+                    className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 print-hide inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 sm:w-auto"
+                  >
+                    <span className="text-base leading-none" aria-hidden="true">
+                      ↗
+                    </span>
+                    Share Trip
+                  </button>
 
-                <span
-                  className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                    tripStatus === "upcoming"
-                      ? "bg-blue-100 text-blue-700"
+                  <span
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                      tripStatus === "upcoming"
+                        ? "bg-blue-100 text-blue-700"
+                        : tripStatus === "today"
+                          ? "bg-green-100 text-green-700"
+                          : tripStatus === "past"
+                            ? "bg-slate-200 text-slate-700"
+                            : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {tripStatus === "upcoming"
+                      ? "Upcoming"
                       : tripStatus === "today"
-                        ? "bg-green-100 text-green-700"
+                        ? "Today"
                         : tripStatus === "past"
-                          ? "bg-slate-200 text-slate-700"
-                          : "bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  {tripStatus === "upcoming"
-                    ? "Upcoming"
-                    : tripStatus === "today"
-                      ? "Today"
-                      : tripStatus === "past"
-                        ? "Completed"
-                        : "Date not specified"}
-                </span>
+                          ? "Completed"
+                          : "Date not specified"}
+                  </span>
 
-                <span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600">
-                  {tripCountdown}
-                </span>
+                  <span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600">
+                    {tripCountdown}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ========================================
+          {/* ========================================
             ROUTE CARD
         ======================================== */}
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-                Route
-              </p>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+                  Route
+                </p>
 
-              <h2 className="mt-1 text-xl font-bold text-slate-900">
-                Your journey
-              </h2>
+                <h2 className="mt-1 text-xl font-bold text-slate-900">
+                  Your journey
+                </h2>
+              </div>
+
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                Road trip
+              </span>
             </div>
 
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-              Road trip
-            </span>
-          </div>
+            <div className="mt-7 grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-sm text-white">
+                    A
+                  </span>
 
-          <div className="mt-7 grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-sm text-white">
-                  A
-                </span>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Starting point
+                    </p>
 
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Starting point
-                  </p>
-
-                  <p className="mt-1 text-lg font-bold text-slate-900">
-                    {trip.origin}
-                  </p>
+                    <p className="mt-1 text-lg font-bold text-slate-900">
+                      {trip.origin}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-center text-2xl font-bold text-slate-300 md:px-2">
-              <span className="hidden md:block">
-                →
-              </span>
+              <div className="flex items-center justify-center text-2xl font-bold text-slate-300 md:px-2">
+                <span className="hidden md:block">→</span>
 
-              <span className="md:hidden">
-                ↓
-              </span>
-            </div>
+                <span className="md:hidden">↓</span>
+              </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-sm text-white">
-                  B
-                </span>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-sm text-white">
+                    B
+                  </span>
 
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Destination
-                  </p>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Destination
+                    </p>
 
-                  <p className="mt-1 text-lg font-bold text-slate-900">
-                    {trip.destination}
-                  </p>
+                    <p className="mt-1 text-lg font-bold text-slate-900">
+                      {trip.destination}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ========================================
+          {/* ========================================
             MAP + ROUTE
         ======================================== */}
 
-        <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            {/* Map Header */}
 
-          {/* Map Header */}
+            <div className="border-b border-slate-200 p-4 sm:p-6">
+              <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+                Journey Map
+              </p>
 
-          <div className="border-b border-slate-200 p-4 sm:p-6">
-            <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-              Journey Map
-            </p>
+              <h2 className="mt-2 text-2xl font-bold text-slate-900">
+                {trip.origin} to {trip.destination}
+              </h2>
 
-            <h2 className="mt-2 text-2xl font-bold text-slate-900">
-              {trip.origin} to {trip.destination}
-            </h2>
+              {routeLoading && (
+                <div
+                  className="mt-3 flex items-center gap-2"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="h-2.5 w-2.5 animate-pulse rounded-full bg-slate-300"
+                  />
+                  <span className="text-sm text-slate-500">
+                    Calculating the best driving route...
+                  </span>
+                </div>
+              )}
+            </div>
 
-            {routeLoading && (
+            {/* Map */}
+
+            {hasCoordinates && originPoint && destinationPoint ? (
               <div
-                className="mt-3 flex items-center gap-2"
-                role="status"
-                aria-live="polite"
+                className="h-[300px] w-full sm:h-[420px]"
+                aria-label={`Map showing the route from ${trip.origin} to ${trip.destination}`}
               >
-                <span
-                  aria-hidden="true"
-                  className="h-2.5 w-2.5 animate-pulse rounded-full bg-slate-300"
-                />
-                <span className="text-sm text-slate-500">
-                  Calculating the best driving route...
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Map */}
-
-          {hasCoordinates &&
-          originPoint &&
-          destinationPoint ? (
-            <div
-              className="h-[300px] w-full sm:h-[420px]"
-              aria-label={`Map showing the route from ${trip.origin} to ${trip.destination}`}
-            >
-              <MapContainer
-                center={mapCenter}
-                zoom={5}
-                scrollWheelZoom={true}
-                className="h-full w-full"
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-
-                <MapView
-                  origin={originPoint}
-                  destination={destinationPoint}
-                  route={
-                    route?.coordinates ?? []
-                  }
-                />
-
-                {/* Origin Marker */}
-
-                <Marker
-                  position={[
-                    originPoint.lat,
-                    originPoint.lng,
-                  ]}
-                  icon={originIcon}
+                <MapContainer
+                  center={mapCenter}
+                  zoom={5}
+                  scrollWheelZoom={true}
+                  className="h-full w-full"
                 >
-                  <Popup>
-                    <div className="text-sm">
-                      <p className="font-bold">
-                        Starting Point
-                      </p>
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
 
-                      <p className="mt-1">
-                        {trip.origin}
-                      </p>
-                    </div>
-                  </Popup>
-                </Marker>
+                  <MapView
+                    origin={originPoint}
+                    destination={destinationPoint}
+                    route={route?.coordinates ?? []}
+                  />
 
-                {/* Destination Marker */}
+                  {/* Origin Marker */}
 
-                <Marker
-                  position={[
-                    destinationPoint.lat,
-                    destinationPoint.lng,
-                  ]}
-                  icon={destinationIcon}
-                >
-                  <Popup>
-                    <div className="text-sm">
-                      <p className="font-bold">
-                        Destination
-                      </p>
+                  <Marker
+                    position={[originPoint.lat, originPoint.lng]}
+                    icon={originIcon}
+                  >
+                    <Popup>
+                      <div className="text-sm">
+                        <p className="font-bold">Starting Point</p>
 
-                      <p className="mt-1">
-                        {trip.destination}
-                      </p>
-                    </div>
-                  </Popup>
-                </Marker>
+                        <p className="mt-1">{trip.origin}</p>
+                      </div>
+                    </Popup>
+                  </Marker>
 
-                {/* Route Line */}
+                  {/* Destination Marker */}
 
-                {route &&
-                  route.coordinates.length > 0 && (
+                  <Marker
+                    position={[destinationPoint.lat, destinationPoint.lng]}
+                    icon={destinationIcon}
+                  >
+                    <Popup>
+                      <div className="text-sm">
+                        <p className="font-bold">Destination</p>
+
+                        <p className="mt-1">{trip.destination}</p>
+                      </div>
+                    </Popup>
+                  </Marker>
+
+                  {/* Route Line */}
+
+                  {route && route.coordinates.length > 0 && (
                     <Polyline
-                      positions={
-                        route.coordinates
-                      }
+                      positions={route.coordinates}
                       pathOptions={{
                         color: "#0f172a",
                         weight: 5,
@@ -2257,389 +2105,352 @@ function TripDetails() {
                       }}
                     />
                   )}
-              </MapContainer>
-            </div>
-          ) : (
-            <div className="flex h-[300px] items-center justify-center bg-slate-50 px-6 text-center">
-              <div>
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-2xl shadow-sm">
-                  🗺️
+                </MapContainer>
+              </div>
+            ) : (
+              <div className="flex h-[300px] items-center justify-center bg-slate-50 px-6 text-center">
+                <div>
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-2xl shadow-sm">
+                    🗺️
+                  </div>
+
+                  <h3 className="mt-4 font-bold text-slate-900">
+                    Map Unavailable
+                  </h3>
+
+                  <p className="mt-2 max-w-md text-sm text-slate-500">
+                    This trip was created before location coordinates were
+                    saved. Create a new trip using the location suggestions to
+                    enable the map.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Route Stats */}
+
+            {route && (
+              <div className="grid border-t border-slate-200 sm:grid-cols-2">
+                {/* Distance */}
+
+                <div className="border-b border-slate-200 p-6 sm:border-b-0 sm:border-r">
+                  <p className="text-sm font-medium text-slate-500">
+                    Driving Distance
+                  </p>
+
+                  <p className="mt-2 text-2xl font-bold text-slate-900">
+                    {formatDistance(route.distance)}
+                  </p>
                 </div>
 
-                <h3 className="mt-4 font-bold text-slate-900">
-                  Map Unavailable
-                </h3>
+                {/* Time */}
 
-                <p className="mt-2 max-w-md text-sm text-slate-500">
-                  This trip was created before location coordinates were saved. Create a new trip using the location suggestions to enable the map.
-                </p>
+                <div className="p-6">
+                  <p className="text-sm font-medium text-slate-500">
+                    Estimated Driving Time
+                  </p>
+
+                  <p className="mt-2 text-2xl font-bold text-slate-900">
+                    {formatRouteDuration(route.duration)}
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Route Stats */}
+            {/* Route Error */}
 
-          {route && (
-            <div className="grid border-t border-slate-200 sm:grid-cols-2">
-
-              {/* Distance */}
-
-              <div className="border-b border-slate-200 p-6 sm:border-b-0 sm:border-r">
-                <p className="text-sm font-medium text-slate-500">
-                  Driving Distance
-                </p>
-
-                <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {formatDistance(
-                    route.distance
-                  )}
-                </p>
-              </div>
-
-              {/* Time */}
-
-              <div className="p-6">
-                <p className="text-sm font-medium text-slate-500">
-                  Estimated Driving Time
-                </p>
-
-                <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {formatRouteDuration(
-                    route.duration
-                  )}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Route Error */}
-
-          {routeError && (
-            <div className="border-t border-slate-200 px-6 py-4">
-              <ErrorState
-                compact
-                title="Route unavailable"
-                message={routeError}
-                actionLabel={
-                  trip.originLatitude === undefined ||
-                  trip.originLongitude === undefined ||
-                  trip.destinationLatitude === undefined ||
-                  trip.destinationLongitude === undefined
-                    ? undefined
-                    : routeLoading
+            {routeError && (
+              <div className="border-t border-slate-200 px-6 py-4">
+                <ErrorState
+                  compact
+                  title="Route unavailable"
+                  message={routeError}
+                  actionLabel={
+                    trip.originLatitude === undefined ||
+                    trip.originLongitude === undefined ||
+                    trip.destinationLatitude === undefined ||
+                    trip.destinationLongitude === undefined
                       ? undefined
-                      : "Try again"
-                }
-                onAction={() => {
-                  setRouteError("");
-                  setRouteRetryKey((current) => current + 1);
-                }}
-              />
-            </div>
-          )}
-        </div>
+                      : routeLoading
+                        ? undefined
+                        : "Try again"
+                  }
+                  onAction={() => {
+                    setRouteError("");
+                    setRouteRetryKey((current) => current + 1);
+                  }}
+                />
+              </div>
+            )}
+          </div>
 
-        {/* ========================================
+          {/* ========================================
             ITINERARY
         ======================================== */}
 
-        <section className="mt-6">
-          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-                Itinerary
-              </p>
-
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-                Plan your journey
-              </h2>
-
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                Add activities to each day so you have a clear plan for your trip.
-              </p>
-            </div>
-
-            <button
-              ref={itineraryAddButtonRef}
-              type="button"
-              onClick={() => {
-                setEditingItineraryId(null);
-                setItineraryError("");
-
-                setItineraryForm((current) => ({
-                  ...current,
-                  day:
-                    current.day >= 1 &&
-                    current.day <= durationDays
-                      ? current.day
-                      : 1,
-                }));
-
-                setIsAddingItineraryItem(
-                  (current) => !current
-                );
-              }}
-              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md sm:w-auto"
-            >
-              <span className="text-lg leading-none">
-                +
-              </span>
-
-              Add Activity
-            </button>
-          </div>
-
-          {itineraryError && (
-            <div className="mb-5">
-              <ErrorState
-                compact
-                title="Itinerary update failed"
-                message={itineraryError}
-              />
-            </div>
-          )}
-
-          {(isAddingItineraryItem ||
-            editingItineraryId !== null) && (
-            <div className="print-hide mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:p-7">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
-                    {editingItineraryId !== null
-                      ? "Edit activity"
-                      : "New activity"}
-                  </p>
-
-                  <h3
-                    id="itinerary-form-title"
-                    className="mt-1 text-xl font-bold text-slate-900"
-                  >
-                    {editingItineraryId !== null
-                      ? "Update your activity"
-                      : "Add an activity"}
-                  </h3>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={closeItineraryForm}
-                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-lg px-2 py-1 text-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                  aria-label="Close itinerary form"
-                >
-                  ×
-                </button>
-              </div>
-
-              <form
-                aria-labelledby="itinerary-form-title"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  if (editingItineraryId !== null) {
-                    handleUpdateItineraryItem();
-                  } else {
-                    handleAddItineraryItem();
-                  }
-                }}
-              >
-              <div className="mt-6 grid gap-5 md:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="itinerary-title"
-                    className="mb-2 block text-sm font-semibold text-slate-800"
-                  >
-                    Activity
-                  </label>
-
-                  <input
-                    ref={itineraryTitleRef}
-                    id="itinerary-title"
-                    type="text"
-                    value={itineraryForm.title}
-                    onChange={(event) =>
-                      handleItineraryFormChange(
-                        "title",
-                        event.target.value
-                      )
-                    }
-                    placeholder="Visit Fort Aguada"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="itinerary-day"
-                    className="mb-2 block text-sm font-semibold text-slate-800"
-                  >
-                    Day
-                  </label>
-
-                  <select
-                    id="itinerary-day"
-                    value={itineraryForm.day}
-                    onChange={(event) =>
-                      handleItineraryFormChange(
-                        "day",
-                        event.target.value
-                      )
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
-                  >
-                    {Array.from(
-                      {
-                        length: durationDays,
-                      },
-                      (_, index) => index + 1
-                    ).map((day) => (
-                      <option
-                        key={day}
-                        value={day}
-                      >
-                        Day {day}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="itinerary-time"
-                    className="mb-2 block text-sm font-semibold text-slate-800"
-                  >
-                    Time
-                    <span className="ml-1 font-normal text-slate-400">
-                      (optional)
-                    </span>
-                  </label>
-
-                  <input
-                    id="itinerary-time"
-                    type="time"
-                    value={itineraryForm.time}
-                    onChange={(event) =>
-                      handleItineraryFormChange(
-                        "time",
-                        event.target.value
-                      )
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="itinerary-notes"
-                    className="mb-2 block text-sm font-semibold text-slate-800"
-                  >
-                    Notes
-                    <span className="ml-1 font-normal text-slate-400">
-                      (optional)
-                    </span>
-                  </label>
-
-                  <input
-                    id="itinerary-notes"
-                    type="text"
-                    value={itineraryForm.notes}
-                    onChange={(event) =>
-                      handleItineraryFormChange(
-                        "notes",
-                        event.target.value
-                      )
-                    }
-                    placeholder="Book tickets in advance"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAddingItineraryItem(false);
-                    setEditingItineraryId(null);
-                    resetItineraryForm();
-                  }}
-                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md"
-                >
-                  {editingItineraryId !== null
-                    ? "Save Changes"
-                    : "Add Activity"}
-                </button>
-              </div>
-              </form>
-            </div>
-          )}
-
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex flex-col gap-3 border-b border-slate-200 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <section className="mt-6">
+            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h3 className="font-bold text-slate-900">
-                  Daily plan
-                </h3>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  {totalItineraryItems === 0
-                    ? "No activities added yet."
-                    : `${totalItineraryItems} ${
-                        totalItineraryItems === 1
-                          ? "activity"
-                          : "activities"
-                      } planned`}
+                <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+                  Itinerary
                 </p>
 
-                {totalItineraryItems > 0 && (
-                  <div className="mt-4 max-w-sm">
-                    <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="text-slate-500">
-                        Progress
-                      </span>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+                  Plan your journey
+                </h2>
 
-                      <span className="text-slate-700">
-                        {completedItineraryCount}/
-                        {totalItineraryItems} completed
-                      </span>
-                    </div>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  Add activities to each day so you have a clear plan for your
+                  trip.
+                </p>
+              </div>
 
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className="h-full rounded-full bg-slate-900 transition-all duration-300"
-                        style={{
-                          width: `${itineraryProgress}%`,
-                        }}
+              <button
+                ref={itineraryAddButtonRef}
+                type="button"
+                onClick={() => {
+                  setEditingItineraryId(null);
+                  setItineraryError("");
+
+                  setItineraryForm((current) => ({
+                    ...current,
+                    day:
+                      current.day >= 1 && current.day <= durationDays
+                        ? current.day
+                        : 1,
+                  }));
+
+                  setIsAddingItineraryItem((current) => !current);
+                }}
+                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md sm:w-auto"
+              >
+                <span className="text-lg leading-none">+</span>
+                Add Activity
+              </button>
+            </div>
+
+            {itineraryError && (
+              <div className="mb-5">
+                <ErrorState
+                  compact
+                  title="Itinerary update failed"
+                  message={itineraryError}
+                />
+              </div>
+            )}
+
+            {(isAddingItineraryItem || editingItineraryId !== null) && (
+              <div className="print-hide mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:p-7">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+                      {editingItineraryId !== null
+                        ? "Edit activity"
+                        : "New activity"}
+                    </p>
+
+                    <h3
+                      id="itinerary-form-title"
+                      className="mt-1 text-xl font-bold text-slate-900"
+                    >
+                      {editingItineraryId !== null
+                        ? "Update your activity"
+                        : "Add an activity"}
+                    </h3>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={closeItineraryForm}
+                    className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-lg px-2 py-1 text-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    aria-label="Close itinerary form"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <form
+                  aria-labelledby="itinerary-form-title"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (editingItineraryId !== null) {
+                      handleUpdateItineraryItem();
+                    } else {
+                      handleAddItineraryItem();
+                    }
+                  }}
+                >
+                  <div className="mt-6 grid gap-5 md:grid-cols-2">
+                    <div>
+                      <label
+                        htmlFor="itinerary-title"
+                        className="mb-2 block text-sm font-semibold text-slate-800"
+                      >
+                        Activity
+                      </label>
+
+                      <input
+                        ref={itineraryTitleRef}
+                        id="itinerary-title"
+                        type="text"
+                        value={itineraryForm.title}
+                        onChange={(event) =>
+                          handleItineraryFormChange("title", event.target.value)
+                        }
+                        placeholder="Visit Fort Aguada"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
                       />
                     </div>
 
-                    <p className="mt-1 text-xs text-slate-400">
-                      {itineraryProgress}% complete
-                    </p>
+                    <div>
+                      <label
+                        htmlFor="itinerary-day"
+                        className="mb-2 block text-sm font-semibold text-slate-800"
+                      >
+                        Day
+                      </label>
+
+                      <select
+                        id="itinerary-day"
+                        value={itineraryForm.day}
+                        onChange={(event) =>
+                          handleItineraryFormChange("day", event.target.value)
+                        }
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                      >
+                        {Array.from(
+                          {
+                            length: durationDays,
+                          },
+                          (_, index) => index + 1,
+                        ).map((day) => (
+                          <option key={day} value={day}>
+                            Day {day}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="itinerary-time"
+                        className="mb-2 block text-sm font-semibold text-slate-800"
+                      >
+                        Time
+                        <span className="ml-1 font-normal text-slate-400">
+                          (optional)
+                        </span>
+                      </label>
+
+                      <input
+                        id="itinerary-time"
+                        type="time"
+                        value={itineraryForm.time}
+                        onChange={(event) =>
+                          handleItineraryFormChange("time", event.target.value)
+                        }
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="itinerary-notes"
+                        className="mb-2 block text-sm font-semibold text-slate-800"
+                      >
+                        Notes
+                        <span className="ml-1 font-normal text-slate-400">
+                          (optional)
+                        </span>
+                      </label>
+
+                      <input
+                        id="itinerary-notes"
+                        type="text"
+                        value={itineraryForm.notes}
+                        onChange={(event) =>
+                          handleItineraryFormChange("notes", event.target.value)
+                        }
+                        placeholder="Book tickets in advance"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                      />
+                    </div>
                   </div>
-                )}
+
+                  <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddingItineraryItem(false);
+                        setEditingItineraryId(null);
+                        resetItineraryForm();
+                      }}
+                      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="submit"
+                      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md"
+                    >
+                      {editingItineraryId !== null
+                        ? "Save Changes"
+                        : "Add Activity"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-slate-200 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900">Daily plan</h3>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    {totalItineraryItems === 0
+                      ? "No activities added yet."
+                      : `${totalItineraryItems} ${
+                          totalItineraryItems === 1 ? "activity" : "activities"
+                        } planned`}
+                  </p>
+
+                  {totalItineraryItems > 0 && (
+                    <div className="mt-4 max-w-sm">
+                      <div className="flex items-center justify-between text-xs font-semibold">
+                        <span className="text-slate-500">Progress</span>
+
+                        <span className="text-slate-700">
+                          {completedItineraryCount}/{totalItineraryItems}{" "}
+                          completed
+                        </span>
+                      </div>
+
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-slate-900 transition-all duration-300"
+                          style={{
+                            width: `${itineraryProgress}%`,
+                          }}
+                        />
+                      </div>
+
+                      <p className="mt-1 text-xs text-slate-400">
+                        {itineraryProgress}% complete
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                  {durationDays} {durationDays === 1 ? "day" : "days"}
+                </span>
               </div>
 
-              <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                {durationDays}{" "}
-                {durationDays === 1
-                  ? "day"
-                  : "days"}
-              </span>
-            </div>
-
-            <div className="divide-y divide-slate-100">
-              {itineraryByDay.map(
-                ({ day, items }) => (
-                  <div
-                    key={day}
-                    className="px-6 py-6 md:px-7"
-                  >
+              <div className="divide-y divide-slate-100">
+                {itineraryByDay.map(({ day, items }) => (
+                  <div key={day} className="px-6 py-6 md:px-7">
                     <div className="flex items-start gap-4">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white">
                         {day}
@@ -2669,9 +2480,7 @@ function TripDetails() {
                                   notes: "",
                                 });
 
-                                setIsAddingItineraryItem(
-                                  true
-                                );
+                                setIsAddingItineraryItem(true);
                               }}
                               className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 mt-2 text-sm font-semibold text-slate-900 hover:underline"
                             >
@@ -2680,810 +2489,273 @@ function TripDetails() {
                           </div>
                         ) : (
                           <div className="mt-4 space-y-3">
-                            {items.map(
-                              (item) => (
-                                <div
-                                  key={item.id}
-                                  className={`rounded-xl border p-4 transition ${
-                                    completedItineraryItems[item.id]
-                                      ? "border-green-200 bg-green-50/50"
-                                      : "border-slate-200 bg-slate-50 hover:border-slate-300"
-                                  }`}
-                                >
-                                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                    <div className="flex min-w-0 flex-1 gap-3">
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          toggleItineraryItemCompletion(
-                                            item.id
-                                          )
-                                        }
-                                        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition ${
-                                          completedItineraryItems[item.id]
-                                            ? "border-green-600 bg-green-600 text-white"
-                                            : "border-slate-300 bg-white text-transparent hover:border-slate-500"
-                                        }`}
-                                        aria-label={
-                                          completedItineraryItems[item.id]
-                                            ? `Mark ${item.title} as incomplete`
-                                            : `Mark ${item.title} as complete`
-                                        }
-                                      >
-                                        ✓
-                                      </button>
+                            {items.map((item) => (
+                              <div
+                                key={item.id}
+                                className={`rounded-xl border p-4 transition ${
+                                  completedItineraryItems[item.id]
+                                    ? "border-green-200 bg-green-50/50"
+                                    : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                                }`}
+                              >
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                  <div className="flex min-w-0 flex-1 gap-3">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        toggleItineraryItemCompletion(item.id)
+                                      }
+                                      className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition ${
+                                        completedItineraryItems[item.id]
+                                          ? "border-green-600 bg-green-600 text-white"
+                                          : "border-slate-300 bg-white text-transparent hover:border-slate-500"
+                                      }`}
+                                      aria-label={
+                                        completedItineraryItems[item.id]
+                                          ? `Mark ${item.title} as incomplete`
+                                          : `Mark ${item.title} as complete`
+                                      }
+                                    >
+                                      ✓
+                                    </button>
 
-                                      <div className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 min-w-0 flex-1">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                          {item.time && (
-                                            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">
-                                              🕐{" "}
-                                              {item.time}
-                                            </span>
-                                          )}
+                                    <div className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 min-w-0 flex-1">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        {item.time && (
+                                          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">
+                                            🕐 {item.time}
+                                          </span>
+                                        )}
 
-                                          <h5
-                                            className={`text-base font-bold ${
-                                              completedItineraryItems[item.id]
-                                                ? "text-slate-500 line-through"
-                                                : "text-slate-900"
-                                            }`}
-                                          >
-                                            {item.title}
-                                          </h5>
+                                        <h5
+                                          className={`text-base font-bold ${
+                                            completedItineraryItems[item.id]
+                                              ? "text-slate-500 line-through"
+                                              : "text-slate-900"
+                                          }`}
+                                        >
+                                          {item.title}
+                                        </h5>
 
-                                          {completedItineraryItems[item.id] && (
-                                            <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
-                                              Completed
-                                            </span>
-                                          )}
-                                        </div>
-
-                                        {item.notes && (
-                                          <p
-                                            className={`mt-2 text-sm leading-6 ${
-                                              completedItineraryItems[item.id]
-                                                ? "text-slate-400"
-                                                : "text-slate-600"
-                                            }`}
-                                          >
-                                            {item.notes}
-                                          </p>
+                                        {completedItineraryItems[item.id] && (
+                                          <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+                                            Completed
+                                          </span>
                                         )}
                                       </div>
-                                    </div>
 
-                                    <div className="flex shrink-0 gap-2 pl-9 sm:pl-0">
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          startEditingItineraryItem(
-                                            item
-                                          )
-                                        }
-                                        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
-                                      >
-                                        Edit
-                                      </button>
-
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          requestDeleteItineraryItem(
-                                            item.id,
-                                            item.title
-                                          )
-                                        }
-                                        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50"
-                                      >
-                                        Delete
-                                      </button>
+                                      {item.notes && (
+                                        <p
+                                          className={`mt-2 text-sm leading-6 ${
+                                            completedItineraryItems[item.id]
+                                              ? "text-slate-400"
+                                              : "text-slate-600"
+                                          }`}
+                                        >
+                                          {item.notes}
+                                        </p>
+                                      )}
                                     </div>
                                   </div>
+
+                                  <div className="flex shrink-0 gap-2 pl-9 sm:pl-0">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        startEditingItineraryItem(item)
+                                      }
+                                      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                                    >
+                                      Edit
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        requestDeleteItineraryItem(
+                                          item.id,
+                                          item.title,
+                                        )
+                                      }
+                                      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
                                 </div>
-                              )
-                            )}
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
                     </div>
                   </div>
-                )
-              )}
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* ========================================
+          {/* ========================================
             EXPENSE TRACKER
         ======================================== */}
 
-        <section className="mt-6">
-          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-                Expense Tracker
-              </p>
+          <section className="mt-6">
+            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+                  Expense Tracker
+                </p>
 
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-                Track your trip spending
-              </h2>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+                  Track your trip spending
+                </h2>
 
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                Keep your expenses organized and see how they compare with your trip budget.
-              </p>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  Keep your expenses organized and see how they compare with
+                  your trip budget.
+                </p>
+              </div>
+
+              <div className="print-hide flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+                <button
+                  ref={expenseAddButtonRef}
+                  type="button"
+                  onClick={() => {
+                    setExpenseError("");
+                    setIsAddingExpense((current) => !current);
+                  }}
+                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md sm:w-auto"
+                >
+                  <span className="text-lg leading-none">+</span>
+                  Add Expense
+                </button>
+
+                <label
+                  tabIndex={0}
+                  role="button"
+                  aria-label="Import expenses from CSV"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      expenseFileInputRef.current?.click();
+                    }
+                  }}
+                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 hover:shadow-md"
+                >
+                  <span className="text-base leading-none">↑</span>
+                  Import CSV
+                  <input
+                    ref={expenseFileInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={handleImportExpenses}
+                    className="hidden"
+                  />
+                </label>
+
+                {expenses.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleExportExpenses}
+                    className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 hover:shadow-md sm:w-auto"
+                  >
+                    <span className="text-base leading-none">↓</span>
+                    Export CSV
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="print-hide flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
-            <button
-              ref={expenseAddButtonRef}
-              type="button"
-              onClick={() => {
-                setExpenseError("");
-                setIsAddingExpense((current) => !current);
-              }}
-              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md sm:w-auto"
-            >
-              <span className="text-lg leading-none">+</span>
-              Add Expense
-            </button>
+            {expenseError && (
+              <div className="mb-5">
+                <ErrorState
+                  compact
+                  title="Expense action needs attention"
+                  message={expenseError}
+                />
+              </div>
+            )}
 
-              <label
-                tabIndex={0}
-                role="button"
-                aria-label="Import expenses from CSV"
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
+            {isAddingExpense && (
+              <div className="print-hide mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:p-7">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+                    {editingExpenseId !== null ? "Edit expense" : "New expense"}
+                  </p>
+
+                  <h3
+                    id="expense-form-title"
+                    className="mt-1 text-xl font-bold text-slate-900"
+                  >
+                    {editingExpenseId !== null
+                      ? "Update trip expense"
+                      : "Add a trip expense"}
+                  </h3>
+                </div>
+
+                <form
+                  aria-labelledby="expense-form-title"
+                  onSubmit={(event) => {
                     event.preventDefault();
-                    expenseFileInputRef.current?.click();
-                  }
-                }}
-                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 hover:shadow-md"
-              >
-                <span className="text-base leading-none">↑</span>
-                Import CSV
-                <input
-                  ref={expenseFileInputRef}
-                  type="file"
-                  accept=".csv,text/csv"
-                  onChange={handleImportExpenses}
-                  className="hidden"
-                />
-              </label>
-
-              {expenses.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleExportExpenses}
-                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 hover:shadow-md sm:w-auto"
-                >
-                  <span className="text-base leading-none">↓</span>
-                  Export CSV
-                </button>
-              )}
-            </div>
-          </div>
-
-          {expenseError && (
-            <div className="mb-5">
-              <ErrorState
-                compact
-                title="Expense action needs attention"
-                message={expenseError}
-              />
-            </div>
-          )}
-
-          {isAddingExpense && (
-            <div className="print-hide mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:p-7">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
-                  {editingExpenseId !== null ? "Edit expense" : "New expense"}
-                </p>
-
-                <h3
-                  id="expense-form-title"
-                  className="mt-1 text-xl font-bold text-slate-900"
-                >
-                  {editingExpenseId !== null
-                    ? "Update trip expense"
-                    : "Add a trip expense"}
-                </h3>
-              </div>
-
-              <form
-                aria-labelledby="expense-form-title"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  if (editingExpenseId !== null) {
-                    handleUpdateExpense();
-                  } else {
-                    handleAddExpense();
-                  }
-                }}
-              >
-              <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <label
-                    htmlFor="expense-amount"
-                    className="mb-2 block text-sm font-semibold text-slate-800"
-                  >
-                    Amount
-                  </label>
-
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">
-                      ₹
-                    </span>
-
-                    <input
-                      ref={expenseAmountRef}
-                      id="expense-amount"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={expenseForm.amount}
-                      onChange={(event) =>
-                        setExpenseForm((current) => ({
-                          ...current,
-                          amount: event.target.value,
-                        }))
-                      }
-                      placeholder="1500"
-                      className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-9 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="expense-category"
-                    className="mb-2 block text-sm font-semibold text-slate-800"
-                  >
-                    Category
-                  </label>
-
-                  <select
-                    id="expense-category"
-                    value={expenseForm.category}
-                    onChange={(event) =>
-                      setExpenseForm((current) => ({
-                        ...current,
-                        category: event.target.value as ExpenseCategory,
-                      }))
+                    if (editingExpenseId !== null) {
+                      handleUpdateExpense();
+                    } else {
+                      handleAddExpense();
                     }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
-                  >
-                    {expenseCategories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="expense-date"
-                    className="mb-2 block text-sm font-semibold text-slate-800"
-                  >
-                    Date
-                  </label>
-
-                  <input
-                    id="expense-date"
-                    type="date"
-                    value={expenseForm.date}
-                    onChange={(event) =>
-                      setExpenseForm((current) => ({
-                        ...current,
-                        date: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="expense-description"
-                    className="mb-2 block text-sm font-semibold text-slate-800"
-                  >
-                    Description
-                  </label>
-
-                  <input
-                    id="expense-description"
-                    type="text"
-                    value={expenseForm.description}
-                    onChange={(event) =>
-                      setExpenseForm((current) => ({
-                        ...current,
-                        description: event.target.value,
-                      }))
-                    }
-                    placeholder="Dinner at the hotel"
-                    maxLength={100}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={closeExpenseForm}
-                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                  }}
                 >
-                  Cancel
-                </button>
+                  <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                      <label
+                        htmlFor="expense-amount"
+                        className="mb-2 block text-sm font-semibold text-slate-800"
+                      >
+                        Amount
+                      </label>
 
-                <button
-                  type="submit"
-                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md"
-                >
-                  {editingExpenseId !== null
-                    ? "Update Expense"
-                    : "Save Expense"}
-                </button>
-              </div>
-              </form>
-            </div>
-          )}
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">
+                          ₹
+                        </span>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">
-                Total Spent
-              </p>
-
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                ₹{totalExpenses.toLocaleString("en-IN")}
-              </p>
-
-              <p className="mt-1 text-xs text-slate-400">
-                Across {expenses.length}{" "}
-                {expenses.length === 1 ? "expense" : "expenses"}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">
-                Trip Budget
-              </p>
-
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                {budgetAmount !== null
-                  ? `₹${budgetAmount.toLocaleString("en-IN")}`
-                  : trip.budget}
-              </p>
-
-              <p className="mt-1 text-xs text-slate-400">
-                Planned budget
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">
-                {remainingBudget !== null && remainingBudget < 0
-                  ? "Over Budget"
-                  : "Remaining"}
-              </p>
-
-              <p
-                className={`mt-2 text-2xl font-bold ${
-                  remainingBudget !== null && remainingBudget < 0
-                    ? "text-red-600"
-                    : "text-slate-900"
-                }`}
-              >
-                {remainingBudget !== null
-                  ? `₹${Math.abs(remainingBudget).toLocaleString("en-IN")}`
-                  : "—"}
-              </p>
-
-              <p className="mt-1 text-xs text-slate-400">
-                {remainingBudget !== null && remainingBudget < 0
-                  ? "Reduce spending to get back on budget"
-                  : "Available to spend"}
-              </p>
-            </div>
-          </div>
-
-          {budgetAmount !== null && (
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-sm font-semibold text-slate-700">
-                  Budget usage
-                </p>
-
-                <p
-                  className={`text-sm font-bold ${
-                    totalExpenses > budgetAmount
-                      ? "text-red-600"
-                      : "text-slate-900"
-                  }`}
-                >
-                  {Math.round((totalExpenses / budgetAmount) * 100)}%
-                </p>
-              </div>
-
-              <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${
-                    totalExpenses > budgetAmount
-                      ? "bg-red-500"
-                      : "bg-slate-900"
-                  }`}
-                  style={{ width: `${expenseProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* ========================================
-              BUDGET ALERT
-          ======================================== */}
-
-          <div
-            className={`mt-4 rounded-2xl border p-5 shadow-sm ${
-              budgetAlert.level === "danger"
-                ? "border-red-200 bg-red-50"
-                : budgetAlert.level === "warning"
-                  ? "border-amber-200 bg-amber-50"
-                  : budgetAlert.level === "healthy"
-                    ? "border-emerald-200 bg-emerald-50"
-                    : "border-slate-200 bg-slate-50"
-            }`}
-          >
-            <div className="flex items-start gap-4">
-              <div
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl ${
-                  budgetAlert.level === "danger"
-                    ? "bg-red-100"
-                    : budgetAlert.level === "warning"
-                      ? "bg-amber-100"
-                      : budgetAlert.level === "healthy"
-                        ? "bg-emerald-100"
-                        : "bg-white"
-                }`}
-              >
-                {budgetAlert.level === "danger"
-                  ? "🚨"
-                  : budgetAlert.level === "warning"
-                    ? "⚠️"
-                    : budgetAlert.level === "healthy"
-                      ? "✅"
-                      : "💡"}
-              </div>
-
-              <div className="min-w-0">
-                <p
-                  className={`font-bold ${
-                    budgetAlert.level === "danger"
-                      ? "text-red-800"
-                      : budgetAlert.level === "warning"
-                        ? "text-amber-800"
-                        : budgetAlert.level === "healthy"
-                          ? "text-emerald-800"
-                          : "text-slate-800"
-                  }`}
-                >
-                  {budgetAlert.title}
-                </p>
-
-                <p
-                  className={`mt-1 text-sm ${
-                    budgetAlert.level === "danger"
-                      ? "text-red-700"
-                      : budgetAlert.level === "warning"
-                        ? "text-amber-700"
-                        : budgetAlert.level === "healthy"
-                          ? "text-emerald-700"
-                          : "text-slate-600"
-                  }`}
-                >
-                  {budgetAlert.message}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ========================================
-              EXPENSE CATEGORY BREAKDOWN
-          ======================================== */}
-
-          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
-                  Spending breakdown
-                </p>
-
-                <h3 className="mt-1 text-xl font-bold text-slate-900">
-                  Expense by category
-                </h3>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  See where most of your trip spending is going.
-                </p>
-              </div>
-
-              <p className="text-sm font-semibold text-slate-500">
-                {expenses.length === 0
-                  ? "No spending recorded"
-                  : `₹${totalExpenses.toLocaleString("en-IN")} total`}
-              </p>
-            </div>
-
-            {totalExpenses === 0 ? (
-              <div className="mt-6 rounded-xl bg-slate-50 px-5 py-8 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl shadow-sm">
-                  📊
-                </div>
-
-                <p className="mt-3 text-sm font-medium text-slate-600">
-                  Add expenses to see your category breakdown.
-                </p>
-              </div>
-            ) : (
-              <div className="mt-6 space-y-5">
-                {expenseCategoryBreakdown.map(
-                  ({ category, amount, percentage }) => (
-                    <div key={category}>
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <span className="text-lg">
-                            {category === "Food"
-                              ? "🍴"
-                              : category === "Travel"
-                                ? "🚕"
-                                : category === "Hotel"
-                                  ? "🏨"
-                                  : category === "Activities"
-                                    ? "🎟️"
-                                    : "💳"}
-                          </span>
-
-                          <p className="truncate text-sm font-semibold text-slate-800">
-                            {category}
-                          </p>
-                        </div>
-
-                        <div className="flex shrink-0 items-center gap-3">
-                          <p className="text-sm font-bold text-slate-900">
-                            ₹{amount.toLocaleString("en-IN")}
-                          </p>
-
-                          <span className="min-w-12 text-right text-xs font-semibold text-slate-500">
-                            {percentage}%
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className="h-full rounded-full bg-slate-900 transition-all duration-300"
-                          style={{ width: `${percentage}%` }}
+                        <input
+                          ref={expenseAmountRef}
+                          id="expense-amount"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={expenseForm.amount}
+                          onChange={(event) =>
+                            setExpenseForm((current) => ({
+                              ...current,
+                              amount: event.target.value,
+                            }))
+                          }
+                          placeholder="1500"
+                          className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-9 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
                         />
                       </div>
                     </div>
-                  )
-                )}
-              </div>
-            )}
-          </div>
 
-          {/* ========================================
-              EXPENSE ANALYTICS
-          ======================================== */}
-
-          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
-                Spending insights
-              </p>
-
-              <h3 className="mt-1 text-xl font-bold text-slate-900">
-                Expense analytics
-              </h3>
-
-              <p className="mt-1 text-sm text-slate-500">
-                A quick overview of your trip spending patterns.
-              </p>
-            </div>
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm font-medium text-slate-500">
-                  Average Expense
-                </p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {expenses.length > 0
-                    ? `₹${Math.round(expenseAnalytics.averageExpense).toLocaleString("en-IN")}`
-                    : "—"}
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Per recorded expense
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm font-medium text-slate-500">
-                  Largest Expense
-                </p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {expenseAnalytics.largestExpense
-                    ? `₹${expenseAnalytics.largestExpense.amount.toLocaleString("en-IN")}`
-                    : "—"}
-                </p>
-                <p className="mt-1 truncate text-xs text-slate-400">
-                  {expenseAnalytics.largestExpense?.description ?? "No expense recorded"}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm font-medium text-slate-500">
-                  Spending Days
-                </p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {expenseAnalytics.spendingDays}
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Days with recorded spending
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm font-medium text-slate-500">
-                  Average Daily Spend
-                </p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {expenseAnalytics.spendingDays > 0
-                    ? `₹${Math.round(expenseAnalytics.averageDailySpending).toLocaleString("en-IN")}`
-                    : "—"}
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Based on spending days
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-lg shadow-sm">
-                💡
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-800">
-                  Spending insight
-                </p>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  {expenseAnalytics.insight}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ========================================
-              DAILY EXPENSE SUMMARY
-          ======================================== */}
-
-          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
-                  Daily spending
-                </p>
-
-                <h3 className="mt-1 text-xl font-bold text-slate-900">
-                  Expense summary by date
-                </h3>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  See how much you spent on each day of your trip.
-                </p>
-              </div>
-
-              {dailyExpenseSummary.length > 0 && (
-                <p className="text-sm font-semibold text-slate-500">
-                  {dailyExpenseSummary.length}{" "}
-                  {dailyExpenseSummary.length === 1 ? "day" : "days"} with spending
-                </p>
-              )}
-            </div>
-
-            {dailyExpenseSummary.length === 0 ? (
-              <div className="mt-6 rounded-xl bg-slate-50 px-5 py-8 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl shadow-sm">
-                  📅
-                </div>
-
-                <p className="mt-3 text-sm font-medium text-slate-600">
-                  Add expenses to see your daily spending.
-                </p>
-              </div>
-            ) : (
-              <div className="mt-6 space-y-5">
-                {dailyExpenseSummary.map((day) => (
-                  <div key={day.date}>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-lg">
-                          📅
-                        </div>
-
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {new Date(`${day.date}T00:00:00`).toLocaleDateString(
-                              "en-IN",
-                              {
-                                weekday: "short",
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              }
-                            )}
-                          </p>
-
-                          <p className="text-xs text-slate-400">
-                            {day.count}{" "}
-                            {day.count === 1 ? "expense" : "expenses"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <p className="text-lg font-bold text-slate-900 sm:text-right">
-                        ₹{day.amount.toLocaleString("en-IN")}
-                      </p>
-                    </div>
-
-                    <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className="h-full rounded-full bg-slate-900 transition-all duration-300"
-                        style={{ width: `${day.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 px-6 py-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <h3 className="font-bold text-slate-900">
-                    Expense history
-                  </h3>
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    {expenses.length === 0
-                      ? "No expenses added yet."
-                      : "Filter and sort your recorded trip expenses."}
-                  </p>
-                </div>
-
-                {expenses.length > 0 && (
-                  <div className="print-hide grid gap-3 sm:grid-cols-2">
                     <div>
                       <label
-                        htmlFor="expense-filter"
-                        className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+                        htmlFor="expense-category"
+                        className="mb-2 block text-sm font-semibold text-slate-800"
                       >
                         Category
                       </label>
+
                       <select
-                        id="expense-filter"
-                        value={expenseCategoryFilter}
+                        id="expense-category"
+                        value={expenseForm.category}
                         onChange={(event) =>
-                          setExpenseCategoryFilter(
-                            event.target.value as ExpenseCategory | "All"
-                          )
+                          setExpenseForm((current) => ({
+                            ...current,
+                            category: event.target.value as ExpenseCategory,
+                          }))
                         }
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
                       >
-                        <option value="All">All categories</option>
                         {expenseCategories.map((category) => (
                           <option key={category} value={category}>
                             {category}
@@ -3494,94 +2766,630 @@ function TripDetails() {
 
                     <div>
                       <label
-                        htmlFor="expense-sort"
-                        className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+                        htmlFor="expense-date"
+                        className="mb-2 block text-sm font-semibold text-slate-800"
                       >
-                        Sort by
+                        Date
                       </label>
-                      <select
-                        id="expense-sort"
-                        value={expenseSort}
+
+                      <input
+                        id="expense-date"
+                        type="date"
+                        value={expenseForm.date}
                         onChange={(event) =>
-                          setExpenseSort(
-                            event.target.value as
-                              | "newest"
-                              | "oldest"
-                              | "highest"
-                              | "lowest"
-                          )
+                          setExpenseForm((current) => ({
+                            ...current,
+                            date: event.target.value,
+                          }))
                         }
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="expense-description"
+                        className="mb-2 block text-sm font-semibold text-slate-800"
                       >
-                        <option value="newest">Newest first</option>
-                        <option value="oldest">Oldest first</option>
-                        <option value="highest">Highest amount</option>
-                        <option value="lowest">Lowest amount</option>
-                      </select>
+                        Description
+                      </label>
+
+                      <input
+                        id="expense-description"
+                        type="text"
+                        value={expenseForm.description}
+                        onChange={(event) =>
+                          setExpenseForm((current) => ({
+                            ...current,
+                            description: event.target.value,
+                          }))
+                        }
+                        placeholder="Dinner at the hotel"
+                        maxLength={100}
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                      />
                     </div>
                   </div>
-                )}
-              </div>
 
-              {expenses.length > 0 && (
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <p className="text-xs font-medium text-slate-500">
-                    Showing {visibleExpenses.length} of {expenses.length} expenses
-                  </p>
-
-                  {(expenseCategoryFilter !== "All" || expenseSort !== "newest") && (
+                  <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <button
                       type="button"
-                      onClick={() => {
-                        setExpenseCategoryFilter("All");
-                        setExpenseSort("newest");
-                      }}
-                      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 text-xs font-semibold text-slate-900 hover:underline"
+                      onClick={closeExpenseForm}
+                      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
                     >
-                      Reset filters
+                      Cancel
                     </button>
+
+                    <button
+                      type="submit"
+                      disabled={isSavingExpense}
+                      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSavingExpense
+                        ? editingExpenseId !== null
+                          ? "Updating..."
+                          : "Saving..."
+                        : editingExpenseId !== null
+                          ? "Update Expense"
+                          : "Save Expense"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-medium text-slate-500">
+                  Total Spent
+                </p>
+
+                <p className="mt-2 text-2xl font-bold text-slate-900">
+                  ₹{totalExpenses.toLocaleString("en-IN")}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-400">
+                  Across {expenses.length}{" "}
+                  {expenses.length === 1 ? "expense" : "expenses"}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-medium text-slate-500">
+                  Trip Budget
+                </p>
+
+                <p className="mt-2 text-2xl font-bold text-slate-900">
+                  {budgetAmount !== null
+                    ? `₹${budgetAmount.toLocaleString("en-IN")}`
+                    : trip.budget}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-400">Planned budget</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-medium text-slate-500">
+                  {remainingBudget !== null && remainingBudget < 0
+                    ? "Over Budget"
+                    : "Remaining"}
+                </p>
+
+                <p
+                  className={`mt-2 text-2xl font-bold ${
+                    remainingBudget !== null && remainingBudget < 0
+                      ? "text-red-600"
+                      : "text-slate-900"
+                  }`}
+                >
+                  {remainingBudget !== null
+                    ? `₹${Math.abs(remainingBudget).toLocaleString("en-IN")}`
+                    : "—"}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-400">
+                  {remainingBudget !== null && remainingBudget < 0
+                    ? "Reduce spending to get back on budget"
+                    : "Available to spend"}
+                </p>
+              </div>
+            </div>
+
+            {budgetAmount !== null && (
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm font-semibold text-slate-700">
+                    Budget usage
+                  </p>
+
+                  <p
+                    className={`text-sm font-bold ${
+                      totalExpenses > budgetAmount
+                        ? "text-red-600"
+                        : "text-slate-900"
+                    }`}
+                  >
+                    {Math.round((totalExpenses / budgetAmount) * 100)}%
+                  </p>
+                </div>
+
+                <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      totalExpenses > budgetAmount
+                        ? "bg-red-500"
+                        : "bg-slate-900"
+                    }`}
+                    style={{ width: `${expenseProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ========================================
+              BUDGET ALERT
+          ======================================== */}
+
+            <div
+              className={`mt-4 rounded-2xl border p-5 shadow-sm ${
+                budgetAlert.level === "danger"
+                  ? "border-red-200 bg-red-50"
+                  : budgetAlert.level === "warning"
+                    ? "border-amber-200 bg-amber-50"
+                    : budgetAlert.level === "healthy"
+                      ? "border-emerald-200 bg-emerald-50"
+                      : "border-slate-200 bg-slate-50"
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl ${
+                    budgetAlert.level === "danger"
+                      ? "bg-red-100"
+                      : budgetAlert.level === "warning"
+                        ? "bg-amber-100"
+                        : budgetAlert.level === "healthy"
+                          ? "bg-emerald-100"
+                          : "bg-white"
+                  }`}
+                >
+                  {budgetAlert.level === "danger"
+                    ? "🚨"
+                    : budgetAlert.level === "warning"
+                      ? "⚠️"
+                      : budgetAlert.level === "healthy"
+                        ? "✅"
+                        : "💡"}
+                </div>
+
+                <div className="min-w-0">
+                  <p
+                    className={`font-bold ${
+                      budgetAlert.level === "danger"
+                        ? "text-red-800"
+                        : budgetAlert.level === "warning"
+                          ? "text-amber-800"
+                          : budgetAlert.level === "healthy"
+                            ? "text-emerald-800"
+                            : "text-slate-800"
+                    }`}
+                  >
+                    {budgetAlert.title}
+                  </p>
+
+                  <p
+                    className={`mt-1 text-sm ${
+                      budgetAlert.level === "danger"
+                        ? "text-red-700"
+                        : budgetAlert.level === "warning"
+                          ? "text-amber-700"
+                          : budgetAlert.level === "healthy"
+                            ? "text-emerald-700"
+                            : "text-slate-600"
+                    }`}
+                  >
+                    {budgetAlert.message}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ========================================
+              EXPENSE CATEGORY BREAKDOWN
+          ======================================== */}
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+                    Spending breakdown
+                  </p>
+
+                  <h3 className="mt-1 text-xl font-bold text-slate-900">
+                    Expense by category
+                  </h3>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    See where most of your trip spending is going.
+                  </p>
+                </div>
+
+                <p className="text-sm font-semibold text-slate-500">
+                  {expenses.length === 0
+                    ? "No spending recorded"
+                    : `₹${totalExpenses.toLocaleString("en-IN")} total`}
+                </p>
+              </div>
+
+              {totalExpenses === 0 ? (
+                <div className="mt-6 rounded-xl bg-slate-50 px-5 py-8 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl shadow-sm">
+                    📊
+                  </div>
+
+                  <p className="mt-3 text-sm font-medium text-slate-600">
+                    Add expenses to see your category breakdown.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-6 space-y-5">
+                  {expenseCategoryBreakdown.map(
+                    ({ category, amount, percentage }) => (
+                      <div key={category}>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span className="text-lg">
+                              {category === "Food"
+                                ? "🍴"
+                                : category === "Travel"
+                                  ? "🚕"
+                                  : category === "Hotel"
+                                    ? "🏨"
+                                    : category === "Activities"
+                                      ? "🎟️"
+                                      : "💳"}
+                            </span>
+
+                            <p className="truncate text-sm font-semibold text-slate-800">
+                              {category}
+                            </p>
+                          </div>
+
+                          <div className="flex shrink-0 items-center gap-3">
+                            <p className="text-sm font-bold text-slate-900">
+                              ₹{amount.toLocaleString("en-IN")}
+                            </p>
+
+                            <span className="min-w-12 text-right text-xs font-semibold text-slate-500">
+                              {percentage}%
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className="h-full rounded-full bg-slate-900 transition-all duration-300"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    ),
                   )}
                 </div>
               )}
             </div>
 
-            {expenses.length === 0 ? (
-              <div className="px-6 py-8 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-xl">
-                  💳
-                </div>
+            {/* ========================================
+              EXPENSE ANALYTICS
+          ======================================== */}
 
-                <p className="mt-3 text-sm font-medium text-slate-600">
-                  Start tracking your spending.
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+                  Spending insights
                 </p>
 
-                <button
-                  type="button"
-                  onClick={() => setIsAddingExpense(true)}
-                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 mt-2 text-sm font-semibold text-slate-900 hover:underline"
-                >
-                  + Add your first expense
-                </button>
-              </div>
-            ) : visibleExpenses.length === 0 ? (
-              <div className="px-6 py-8 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-xl">
-                  🔎
-                </div>
-                <p className="mt-3 text-sm font-medium text-slate-600">
-                  No expenses match the selected category.
+                <h3 className="mt-1 text-xl font-bold text-slate-900">
+                  Expense analytics
+                </h3>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  A quick overview of your trip spending patterns.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setExpenseCategoryFilter("All")}
-                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 mt-2 text-sm font-semibold text-slate-900 hover:underline"
-                >
-                  Show all expenses
-                </button>
               </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {visibleExpenses.map((expense) => (
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-sm font-medium text-slate-500">
+                    Average Expense
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">
+                    {expenses.length > 0
+                      ? `₹${Math.round(expenseAnalytics.averageExpense).toLocaleString("en-IN")}`
+                      : "—"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Per recorded expense
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-sm font-medium text-slate-500">
+                    Largest Expense
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">
+                    {expenseAnalytics.largestExpense
+                      ? `₹${expenseAnalytics.largestExpense.amount.toLocaleString("en-IN")}`
+                      : "—"}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-slate-400">
+                    {expenseAnalytics.largestExpense?.description ??
+                      "No expense recorded"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-sm font-medium text-slate-500">
+                    Spending Days
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">
+                    {expenseAnalytics.spendingDays}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Days with recorded spending
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-sm font-medium text-slate-500">
+                    Average Daily Spend
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">
+                    {expenseAnalytics.spendingDays > 0
+                      ? `₹${Math.round(expenseAnalytics.averageDailySpending).toLocaleString("en-IN")}`
+                      : "—"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Based on spending days
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-lg shadow-sm">
+                  💡
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-800">
+                    Spending insight
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    {expenseAnalytics.insight}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ========================================
+              DAILY EXPENSE SUMMARY
+          ======================================== */}
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+                    Daily spending
+                  </p>
+
+                  <h3 className="mt-1 text-xl font-bold text-slate-900">
+                    Expense summary by date
+                  </h3>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    See how much you spent on each day of your trip.
+                  </p>
+                </div>
+
+                {dailyExpenseSummary.length > 0 && (
+                  <p className="text-sm font-semibold text-slate-500">
+                    {dailyExpenseSummary.length}{" "}
+                    {dailyExpenseSummary.length === 1 ? "day" : "days"} with
+                    spending
+                  </p>
+                )}
+              </div>
+
+              {dailyExpenseSummary.length === 0 ? (
+                <div className="mt-6 rounded-xl bg-slate-50 px-5 py-8 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl shadow-sm">
+                    📅
+                  </div>
+
+                  <p className="mt-3 text-sm font-medium text-slate-600">
+                    Add expenses to see your daily spending.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-6 space-y-5">
+                  {dailyExpenseSummary.map((day) => (
+                    <div key={day.date}>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-lg">
+                            📅
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">
+                              {new Date(
+                                `${day.date}T00:00:00`,
+                              ).toLocaleDateString("en-IN", {
+                                weekday: "short",
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </p>
+
+                            <p className="text-xs text-slate-400">
+                              {day.count}{" "}
+                              {day.count === 1 ? "expense" : "expenses"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="text-lg font-bold text-slate-900 sm:text-right">
+                          ₹{day.amount.toLocaleString("en-IN")}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-slate-900 transition-all duration-300"
+                          style={{ width: `${day.percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-200 px-6 py-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-900">
+                      Expense history
+                    </h3>
+
+                    <p className="mt-1 text-sm text-slate-500">
+                      {expenses.length === 0
+                        ? "No expenses added yet."
+                        : "Filter and sort your recorded trip expenses."}
+                    </p>
+                  </div>
+
+                  {expenses.length > 0 && (
+                    <div className="print-hide grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label
+                          htmlFor="expense-filter"
+                          className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+                        >
+                          Category
+                        </label>
+                        <select
+                          id="expense-filter"
+                          value={expenseCategoryFilter}
+                          onChange={(event) =>
+                            setExpenseCategoryFilter(
+                              event.target.value as ExpenseCategory | "All",
+                            )
+                          }
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                        >
+                          <option value="All">All categories</option>
+                          {expenseCategories.map((category) => (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="expense-sort"
+                          className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+                        >
+                          Sort by
+                        </label>
+                        <select
+                          id="expense-sort"
+                          value={expenseSort}
+                          onChange={(event) =>
+                            setExpenseSort(
+                              event.target.value as
+                                | "newest"
+                                | "oldest"
+                                | "highest"
+                                | "lowest",
+                            )
+                          }
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                        >
+                          <option value="newest">Newest first</option>
+                          <option value="oldest">Oldest first</option>
+                          <option value="highest">Highest amount</option>
+                          <option value="lowest">Lowest amount</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {expenses.length > 0 && (
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <p className="text-xs font-medium text-slate-500">
+                      Showing {visibleExpenses.length} of {expenses.length}{" "}
+                      expenses
+                    </p>
+
+                    {(expenseCategoryFilter !== "All" ||
+                      expenseSort !== "newest") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExpenseCategoryFilter("All");
+                          setExpenseSort("newest");
+                        }}
+                        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 text-xs font-semibold text-slate-900 hover:underline"
+                      >
+                        Reset filters
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {expenses.length === 0 ? (
+                <div className="px-6 py-8 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-xl">
+                    💳
+                  </div>
+
+                  <p className="mt-3 text-sm font-medium text-slate-600">
+                    Start tracking your spending.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingExpense(true)}
+                    className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 mt-2 text-sm font-semibold text-slate-900 hover:underline"
+                  >
+                    + Add your first expense
+                  </button>
+                </div>
+              ) : visibleExpenses.length === 0 ? (
+                <div className="px-6 py-8 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-xl">
+                    🔎
+                  </div>
+                  <p className="mt-3 text-sm font-medium text-slate-600">
+                    No expenses match the selected category.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setExpenseCategoryFilter("All")}
+                    className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 mt-2 text-sm font-semibold text-slate-900 hover:underline"
+                  >
+                    Show all expenses
+                  </button>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {visibleExpenses.map((expense) => (
                     <div
                       key={expense.id}
                       className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
@@ -3614,14 +3422,13 @@ function TripDetails() {
                             <span>Expense #{expense.id}</span>
                             <span>•</span>
                             <span>
-                              {new Date(`${expense.date}T00:00:00`).toLocaleDateString(
-                                "en-IN",
-                                {
-                                  day: "2-digit",
-                                  month: "short",
-                                  year: "numeric",
-                                }
-                              )}
+                              {new Date(
+                                `${expense.date}T00:00:00`,
+                              ).toLocaleDateString("en-IN", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })}
                             </span>
                           </div>
                         </div>
@@ -3646,7 +3453,7 @@ function TripDetails() {
                             onClick={() =>
                               requestDeleteExpense(
                                 expense.id,
-                                expense.description
+                                expense.description,
                               )
                             }
                             className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50"
@@ -3657,253 +3464,244 @@ function TripDetails() {
                       </div>
                     </div>
                   ))}
-              </div>
-            )}
-          </div>
-        </section>
+                </div>
+              )}
+            </div>
+          </section>
 
-        {/* ========================================
+          {/* ========================================
             TRIP INFORMATION
         ======================================== */}
 
-        <div className="mt-6">
-          <div className="mb-4">
-            <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-              Trip Information
-            </p>
-
-            <h2 className="mt-1 text-xl font-bold text-slate-900">
-              Key details
-            </h2>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
-                <span className={detailIconClass}>
-                  ⏱️
-                </span>
-              </div>
-
-              <p className="mt-4 text-sm font-medium text-slate-500">
-                Duration
+          <div className="mt-6">
+            <div className="mb-4">
+              <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+                Trip Information
               </p>
 
-              <p className="mt-1 text-xl font-bold text-slate-900">
-                {trip.duration}
-              </p>
+              <h2 className="mt-1 text-xl font-bold text-slate-900">
+                Key details
+              </h2>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
-                <span className={detailIconClass}>
-                  💰
-                </span>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+                  <span className={detailIconClass}>⏱️</span>
+                </div>
+
+                <p className="mt-4 text-sm font-medium text-slate-500">
+                  Duration
+                </p>
+
+                <p className="mt-1 text-xl font-bold text-slate-900">
+                  {trip.duration}
+                </p>
               </div>
 
-              <p className="mt-4 text-sm font-medium text-slate-500">
-                Estimated Budget
-              </p>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+                  <span className={detailIconClass}>💰</span>
+                </div>
 
-              <p className="mt-1 text-xl font-bold text-slate-900">
-                {trip.budget}
-              </p>
-            </div>
+                <p className="mt-4 text-sm font-medium text-slate-500">
+                  Estimated Budget
+                </p>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
-                <span className={detailIconClass}>
-                  📅
-                </span>
+                <p className="mt-1 text-xl font-bold text-slate-900">
+                  {trip.budget}
+                </p>
               </div>
 
-              <p className="mt-4 text-sm font-medium text-slate-500">
-                Travel Date
-              </p>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+                  <span className={detailIconClass}>📅</span>
+                </div>
 
-              <p className="mt-1 text-lg font-bold text-slate-900">
-                {formattedDate}
-              </p>
+                <p className="mt-4 text-sm font-medium text-slate-500">
+                  Travel Date
+                </p>
 
-              <p className="mt-1 text-xs text-slate-500">
-                {tripCountdown}
-              </p>
-            </div>
+                <p className="mt-1 text-lg font-bold text-slate-900">
+                  {formattedDate}
+                </p>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
-                <span className={detailIconClass}>
-                  👥
-                </span>
+                <p className="mt-1 text-xs text-slate-500">{tripCountdown}</p>
               </div>
 
-              <p className="mt-4 text-sm font-medium text-slate-500">
-                Travelers
-              </p>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+                  <span className={detailIconClass}>👥</span>
+                </div>
 
-              <p className="mt-1 text-xl font-bold text-slate-900">
-                {trip.travelers || 1}
-              </p>
+                <p className="mt-4 text-sm font-medium text-slate-500">
+                  Travelers
+                </p>
 
-              <p className="mt-1 text-xs text-slate-500">
-                {(trip.travelers || 1) === 1
-                  ? "Person"
-                  : "People"}
-              </p>
+                <p className="mt-1 text-xl font-bold text-slate-900">
+                  {trip.travelers || 1}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  {(trip.travelers || 1) === 1 ? "Person" : "People"}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* ========================================
+          {/* ========================================
             TRIP STATUS + ACTIONS
         ======================================== */}
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-                Trip Status
-              </p>
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+                  Trip Status
+                </p>
 
-              <p className="mt-2 text-xl font-bold text-slate-900">
+                <p className="mt-2 text-xl font-bold text-slate-900">
+                  {tripStatus === "upcoming"
+                    ? "Your trip is coming up"
+                    : tripStatus === "today"
+                      ? "Your trip is today! 🎉"
+                      : tripStatus === "past"
+                        ? "This trip has been completed"
+                        : "Travel date not specified"}
+                </p>
+
+                <p className="mt-1 text-sm text-slate-500">{tripCountdown}</p>
+              </div>
+
+              <span
+                className={`self-start rounded-full px-4 py-2 text-sm font-semibold md:self-auto ${
+                  tripStatus === "upcoming"
+                    ? "bg-blue-100 text-blue-700"
+                    : tripStatus === "today"
+                      ? "bg-green-100 text-green-700"
+                      : tripStatus === "past"
+                        ? "bg-slate-200 text-slate-700"
+                        : "bg-slate-100 text-slate-600"
+                }`}
+              >
                 {tripStatus === "upcoming"
-                  ? "Your trip is coming up"
+                  ? "Upcoming"
                   : tripStatus === "today"
-                    ? "Your trip is today! 🎉"
+                    ? "Today"
                     : tripStatus === "past"
-                      ? "This trip has been completed"
-                      : "Travel date not specified"}
-              </p>
-
-              <p className="mt-1 text-sm text-slate-500">
-                {tripCountdown}
-              </p>
+                      ? "Completed"
+                      : "Date not specified"}
+              </span>
             </div>
 
-            <span
-              className={`self-start rounded-full px-4 py-2 text-sm font-semibold md:self-auto ${
-                tripStatus === "upcoming"
-                  ? "bg-blue-100 text-blue-700"
-                  : tripStatus === "today"
-                    ? "bg-green-100 text-green-700"
-                    : tripStatus === "past"
-                      ? "bg-slate-200 text-slate-700"
-                      : "bg-slate-100 text-slate-600"
-              }`}
-            >
-              {tripStatus === "upcoming"
-                ? "Upcoming"
-                : tripStatus === "today"
-                  ? "Today"
-                  : tripStatus === "past"
-                    ? "Completed"
-                    : "Date not specified"}
-            </span>
+            <div className="mt-6 border-t border-slate-200 pt-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Trip ID
+              </p>
+
+              <p className="mt-1 font-mono text-sm text-slate-600">
+                #{trip.id}
+              </p>
+            </div>
           </div>
 
-          <div className="mt-6 border-t border-slate-200 pt-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Trip ID
-            </p>
-
-            <p className="mt-1 font-mono text-sm text-slate-600">
-              #{trip.id}
-            </p>
-          </div>
-        </div>
-
-        {/* ========================================
+          {/* ========================================
             ACTIONS
         ======================================== */}
 
-        <div className="print-hide mt-6 grid gap-3 sm:grid-cols-3">
-          <Link
-            to={`/dashboard?tripId=${trip.id}`}
-            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 min-h-12 rounded-xl bg-slate-900 px-5 py-3 text-center font-semibold text-white transition hover:bg-slate-800"
-          >
-            View Dashboard
-          </Link>
+          <div className="print-hide mt-6 grid gap-3 sm:grid-cols-3">
+            <Link
+              to={`/dashboard?tripId=${trip.id}`}
+              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 min-h-12 rounded-xl bg-slate-900 px-5 py-3 text-center font-semibold text-white transition hover:bg-slate-800"
+            >
+              View Dashboard
+            </Link>
 
-          <Link
-            to={`/saved-trips/${trip.id}/edit`}
-            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 min-h-12 rounded-xl border border-slate-300 bg-white px-5 py-3 text-center font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            Edit Trip
-          </Link>
+            <Link
+              to={`/saved-trips/${trip.id}/edit`}
+              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 min-h-12 rounded-xl border border-slate-300 bg-white px-5 py-3 text-center font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Edit Trip
+            </Link>
 
-          <Link
-            to="/saved-trips"
-            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 min-h-12 rounded-xl border border-slate-300 bg-white px-5 py-3 text-center font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            All Saved Trips
-          </Link>
+            <Link
+              to="/saved-trips"
+              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 min-h-12 rounded-xl border border-slate-300 bg-white px-5 py-3 text-center font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              All Saved Trips
+            </Link>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
 
-    {deleteConfirmation && (
-      <div
-        className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/40 px-6 py-8 backdrop-blur-sm"
-        role="presentation"
-      >
+      {deleteConfirmation && (
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-dialog-title"
-          aria-describedby="delete-dialog-description"
-          className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/40 px-6 py-8 backdrop-blur-sm"
+          role="presentation"
         >
-          <div className="flex items-start gap-4">
-            <div
-              aria-hidden="true"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-50 text-xl"
-            >
-              ⚠️
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-dialog-title"
+            aria-describedby="delete-dialog-description"
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+          >
+            <div className="flex items-start gap-4">
+              <div
+                aria-hidden="true"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-50 text-xl"
+              >
+                ⚠️
+              </div>
+
+              <div className="min-w-0">
+                <h2
+                  id="delete-dialog-title"
+                  className="text-lg font-bold text-slate-900"
+                >
+                  Delete{" "}
+                  {deleteConfirmation.type === "itinerary"
+                    ? "activity"
+                    : "expense"}
+                  ?
+                </h2>
+
+                <p
+                  id="delete-dialog-description"
+                  className="mt-2 text-sm leading-6 text-slate-600"
+                >
+                  Are you sure you want to delete “
+                  {deleteConfirmation.itemLabel}”? This action cannot be undone.
+                </p>
+              </div>
             </div>
 
-            <div className="min-w-0">
-              <h2
-                id="delete-dialog-title"
-                className="text-lg font-bold text-slate-900"
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                ref={deleteCancelButtonRef}
+                type="button"
+                onClick={() => {
+                  setDeleteConfirmation(null);
+                  window.requestAnimationFrame(() => {
+                    deleteTriggerRef.current?.focus();
+                  });
+                }}
+                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
-                Delete {deleteConfirmation.type === "itinerary" ? "activity" : "expense"}?
-              </h2>
+                Cancel
+              </button>
 
-              <p
-                id="delete-dialog-description"
-                className="mt-2 text-sm leading-6 text-slate-600"
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:ring-offset-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
               >
-                Are you sure you want to delete “{deleteConfirmation.itemLabel}”? This action cannot be undone.
-              </p>
+                Delete
+              </button>
             </div>
-          </div>
-
-          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <button
-              ref={deleteCancelButtonRef}
-              type="button"
-              onClick={() => {
-                setDeleteConfirmation(null);
-                window.requestAnimationFrame(() => {
-                  deleteTriggerRef.current?.focus();
-                });
-              }}
-              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              onClick={confirmDelete}
-              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:ring-offset-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
-            >
-              Delete
-            </button>
           </div>
         </div>
-      </div>
-    )}
+      )}
     </>
   );
 }
