@@ -2,10 +2,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import {
-  addTrip,
-  type Trip,
-} from "../services/tripService";
+import { addTrip, type Trip } from "../services/tripService";
 
 interface LocationResult {
   id: number;
@@ -40,15 +37,16 @@ function LocationSearch({
   useEffect(() => {
     const searchText = value.trim();
 
-    if (searchText.length < 2) {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
-
     const controller = new AbortController();
 
     const timer = window.setTimeout(async () => {
+      if (searchText.length < 2) {
+        setResults([]);
+        setLoading(false);
+        setShowResults(false);
+        return;
+      }
+
       setLoading(true);
 
       try {
@@ -70,14 +68,12 @@ function LocationSearch({
         setResults(data.results ?? []);
         setShowResults(true);
       } catch (error) {
-        if (
-          error instanceof DOMException &&
-          error.name === "AbortError"
-        ) {
+        if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
 
         console.error("Location search error:", error);
+
         setResults([]);
       } finally {
         setLoading(false);
@@ -91,11 +87,9 @@ function LocationSearch({
   }, [value]);
 
   const formatLocation = (location: LocationResult) => {
-    const parts = [
-      location.name,
-      location.admin1,
-      location.country,
-    ].filter(Boolean);
+    const parts = [location.name, location.admin1, location.country].filter(
+      Boolean,
+    );
 
     return parts.join(", ");
   };
@@ -208,15 +202,14 @@ function PlanTrip() {
 
   const [error, setError] = useState("");
 
-  const [selectedOrigin, setSelectedOrigin] =
-    useState<LocationResult | null>(null);
+  const [selectedOrigin, setSelectedOrigin] = useState<LocationResult | null>(
+    null,
+  );
 
   const [selectedDestination, setSelectedDestination] =
     useState<LocationResult | null>(null);
 
-  const handleChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
 
     setFormData((previousData) => ({
@@ -239,9 +232,7 @@ function PlanTrip() {
    * ========================================
    */
 
-  const handleSubmit = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     setError("");
@@ -283,9 +274,7 @@ function PlanTrip() {
     }
 
     if (!selectedDestination) {
-      setError(
-        "Please select your destination from the search suggestions.",
-      );
+      setError("Please select your destination from the search suggestions.");
       return;
     }
 
@@ -294,9 +283,7 @@ function PlanTrip() {
      */
 
     if (selectedOrigin.id === selectedDestination.id) {
-      setError(
-        "Starting location and destination cannot be the same.",
-      );
+      setError("Starting location and destination cannot be the same.");
       return;
     }
 
@@ -304,9 +291,7 @@ function PlanTrip() {
       formData.origin.trim().toLowerCase() ===
       formData.destination.trim().toLowerCase()
     ) {
-      setError(
-        "Starting location and destination cannot be the same.",
-      );
+      setError("Starting location and destination cannot be the same.");
       return;
     }
 
@@ -316,14 +301,8 @@ function PlanTrip() {
 
     const travelers = Number(formData.travelers);
 
-    if (
-      !Number.isInteger(travelers) ||
-      travelers < 1 ||
-      travelers > 50
-    ) {
-      setError(
-        "Number of travelers must be between 1 and 50.",
-      );
+    if (!Number.isInteger(travelers) || travelers < 1 || travelers > 50) {
+      setError("Number of travelers must be between 1 and 50.");
       return;
     }
 
@@ -334,9 +313,7 @@ function PlanTrip() {
     const budget = Number(formData.budget);
 
     if (!Number.isFinite(budget) || budget <= 0) {
-      setError(
-        "Please enter a valid budget greater than ₹0.",
-      );
+      setError("Please enter a valid budget greater than ₹0.");
       return;
     }
 
@@ -385,10 +362,7 @@ function PlanTrip() {
      */
 
     try {
-      const savedTrip = await addTrip(
-        newTrip,
-        user.id,
-      );
+      const savedTrip = await addTrip(newTrip, user.id);
 
       /*
        * ========================================
@@ -400,16 +374,13 @@ function PlanTrip() {
     } catch (error) {
       console.error("Create trip error:", error);
 
-      setError(
-        "Unable to create your trip. Please try again.",
-      );
+      setError("Unable to create your trip. Please try again.");
     }
   };
 
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-12">
       <div className="mx-auto max-w-3xl">
-
         {/* HEADER */}
 
         <div className="mb-8">
@@ -424,8 +395,8 @@ function PlanTrip() {
               </h1>
 
               <p className="mt-3 max-w-2xl text-slate-600">
-                Add your route, dates, travelers, and budget
-                to create your travel plan.
+                Add your route, dates, travelers, and budget to create your
+                travel plan.
               </p>
             </div>
 
@@ -438,7 +409,6 @@ function PlanTrip() {
         {/* FORM CARD */}
 
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8 lg:p-10">
-
           {/* ERROR */}
 
           {error && (
@@ -452,17 +422,12 @@ function PlanTrip() {
             </div>
           )}
 
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-7"
-          >
-
+          <form onSubmit={handleSubmit} className="space-y-7">
             {/* ========================================
                 ROUTE
             ======================================== */}
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 md:p-6">
-
               <div className="mb-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                   01 · Route
@@ -535,7 +500,6 @@ function PlanTrip() {
             ======================================== */}
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 md:p-6">
-
               <div className="mb-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                   02 · Schedule
@@ -547,7 +511,6 @@ function PlanTrip() {
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
-
                 {/* TRAVEL DATE */}
 
                 <div>
@@ -564,11 +527,7 @@ function PlanTrip() {
                     type="date"
                     value={formData.travelDate}
                     onChange={handleChange}
-                    min={
-                      new Date()
-                        .toISOString()
-                        .split("T")[0]
-                    }
+                    min={new Date().toISOString().split("T")[0]}
                     required
                     className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 shadow-sm outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
                   />
@@ -597,7 +556,6 @@ function PlanTrip() {
                     className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
                   />
                 </div>
-
               </div>
             </div>
 
@@ -606,7 +564,6 @@ function PlanTrip() {
             ======================================== */}
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 md:p-6">
-
               <div className="mb-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                   03 · Stay
@@ -638,9 +595,7 @@ function PlanTrip() {
                   required
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 shadow-sm outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
                 >
-                  <option value="">
-                    Select trip duration
-                  </option>
+                  <option value="">Select trip duration</option>
 
                   <option value="1 day">1 day</option>
                   <option value="2 days">2 days</option>
@@ -651,9 +606,7 @@ function PlanTrip() {
                   <option value="7 days">7 days</option>
                   <option value="10 days">10 days</option>
                   <option value="14 days">14 days</option>
-                  <option value="custom">
-                    More than 14 days
-                  </option>
+                  <option value="custom">More than 14 days</option>
                 </select>
               </div>
             </div>
@@ -663,7 +616,6 @@ function PlanTrip() {
             ======================================== */}
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 md:p-6">
-
               <div className="mb-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                   04 · Budget
@@ -713,13 +665,11 @@ function PlanTrip() {
 
             {(selectedOrigin || selectedDestination) && (
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-
                 <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
                   Selected Locations
                 </p>
 
                 <div className="mt-4 space-y-4">
-
                   {/* ORIGIN */}
 
                   {selectedOrigin && (
@@ -739,8 +689,7 @@ function PlanTrip() {
                         </p>
 
                         <p className="mt-1 text-xs text-slate-500">
-                          Coordinates:{" "}
-                          {selectedOrigin.latitude.toFixed(4)},{" "}
+                          Coordinates: {selectedOrigin.latitude.toFixed(4)},{" "}
                           {selectedOrigin.longitude.toFixed(4)}
                         </p>
                       </div>
@@ -754,9 +703,7 @@ function PlanTrip() {
                       <span className="text-lg">🏁</span>
 
                       <div>
-                        <p className="text-xs text-slate-500">
-                          Destination
-                        </p>
+                        <p className="text-xs text-slate-500">Destination</p>
 
                         <p className="font-semibold text-slate-900">
                           {selectedDestination.name}
@@ -766,14 +713,12 @@ function PlanTrip() {
                         </p>
 
                         <p className="mt-1 text-xs text-slate-500">
-                          Coordinates:{" "}
-                          {selectedDestination.latitude.toFixed(4)},{" "}
-                          {selectedDestination.longitude.toFixed(4)}
+                          Coordinates: {selectedDestination.latitude.toFixed(4)}
+                          , {selectedDestination.longitude.toFixed(4)}
                         </p>
                       </div>
                     </div>
                   )}
-
                 </div>
               </div>
             )}
@@ -787,17 +732,13 @@ function PlanTrip() {
               formData.travelDate ||
               formData.travelers) && (
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-
                 <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
                   Trip Preview
                 </p>
 
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
-
                   <div>
-                    <p className="text-xs text-slate-500">
-                      Route
-                    </p>
+                    <p className="text-xs text-slate-500">Route</p>
 
                     <p className="mt-1 font-semibold text-slate-900">
                       {formData.origin || "Starting point"} →{" "}
@@ -806,9 +747,7 @@ function PlanTrip() {
                   </div>
 
                   <div>
-                    <p className="text-xs text-slate-500">
-                      Date
-                    </p>
+                    <p className="text-xs text-slate-500">Date</p>
 
                     <p className="mt-1 font-semibold text-slate-900">
                       {formData.travelDate || "Not selected"}
@@ -816,9 +755,7 @@ function PlanTrip() {
                   </div>
 
                   <div>
-                    <p className="text-xs text-slate-500">
-                      Travelers
-                    </p>
+                    <p className="text-xs text-slate-500">Travelers</p>
 
                     <p className="mt-1 font-semibold text-slate-900">
                       {formData.travelers || "0"}
@@ -826,9 +763,7 @@ function PlanTrip() {
                   </div>
 
                   <div>
-                    <p className="text-xs text-slate-500">
-                      Duration
-                    </p>
+                    <p className="text-xs text-slate-500">Duration</p>
 
                     <p className="mt-1 font-semibold text-slate-900">
                       {formData.duration || "Not specified"}
@@ -836,19 +771,14 @@ function PlanTrip() {
                   </div>
 
                   <div>
-                    <p className="text-xs text-slate-500">
-                      Budget
-                    </p>
+                    <p className="text-xs text-slate-500">Budget</p>
 
                     <p className="mt-1 font-semibold text-slate-900">
                       {formData.budget
-                        ? `₹${Number(formData.budget).toLocaleString(
-                            "en-IN",
-                          )}`
+                        ? `₹${Number(formData.budget).toLocaleString("en-IN")}`
                         : "Not specified"}
                     </p>
                   </div>
-
                 </div>
               </div>
             )}
@@ -858,7 +788,6 @@ function PlanTrip() {
             ======================================== */}
 
             <div className="flex flex-col gap-3 pt-4 sm:flex-row">
-
               <button
                 type="button"
                 onClick={() => navigate("/saved-trips")}
@@ -873,9 +802,7 @@ function PlanTrip() {
               >
                 Create Trip
               </button>
-
             </div>
-
           </form>
         </div>
       </div>

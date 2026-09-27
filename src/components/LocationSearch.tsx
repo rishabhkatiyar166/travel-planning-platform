@@ -33,25 +33,26 @@ function LocationSearch({
   useEffect(() => {
     const searchText = value.trim();
 
-    if (searchText.length < 2) {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
-
     const controller = new AbortController();
 
     const timer = window.setTimeout(async () => {
+      if (searchText.length < 2) {
+        setResults([]);
+        setLoading(false);
+        setShowResults(false);
+        return;
+      }
+
       setLoading(true);
 
       try {
         const response = await fetch(
           `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
-            searchText
+            searchText,
           )}&count=5&language=en&format=json`,
           {
             signal: controller.signal,
-          }
+          },
         );
 
         if (!response.ok) {
@@ -63,14 +64,12 @@ function LocationSearch({
         setResults(data.results ?? []);
         setShowResults(true);
       } catch (error) {
-        if (
-          error instanceof DOMException &&
-          error.name === "AbortError"
-        ) {
+        if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
 
         console.error("Location search error:", error);
+
         setResults([]);
       } finally {
         setLoading(false);
@@ -84,11 +83,7 @@ function LocationSearch({
   }, [value]);
 
   const formatLocation = (location: LocationResult) => {
-    return [
-      location.name,
-      location.admin1,
-      location.country,
-    ]
+    return [location.name, location.admin1, location.country]
       .filter(Boolean)
       .join(", ");
   };
@@ -153,9 +148,7 @@ function LocationSearch({
               }}
               className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-slate-50"
             >
-              <span className="mt-0.5 text-lg">
-                📍
-              </span>
+              <span className="mt-0.5 text-lg">📍</span>
 
               <span className="min-w-0">
                 <span className="block font-semibold text-slate-900">
@@ -176,9 +169,7 @@ function LocationSearch({
         value.trim().length >= 2 &&
         results.length === 0 && (
           <div className="absolute z-50 mt-2 w-full rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
-            <p className="text-sm text-slate-500">
-              No locations found.
-            </p>
+            <p className="text-sm text-slate-500">No locations found.</p>
           </div>
         )}
     </div>

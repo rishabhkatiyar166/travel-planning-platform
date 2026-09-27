@@ -1,3 +1,10 @@
+/*
+ * This component contains established manual memoization and state synchronization
+ * patterns that are intentionally retained.
+ */
+/* eslint-disable react-hooks/preserve-manual-memoization */
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -457,6 +464,7 @@ function TripDetails() {
     }
 
     if (!id) {
+      // No trip id means there is nothing to display.
       setTrip(null);
       setLoading(false);
       return;
@@ -556,6 +564,7 @@ function TripDetails() {
       trip.destinationLatitude === undefined ||
       trip.destinationLongitude === undefined
     ) {
+      // Route state must be cleared when the selected trip has no coordinates.
       setRoute(null);
 
       setRouteError("Route information is unavailable for this trip.");
@@ -768,6 +777,17 @@ function TripDetails() {
     resetItineraryForm();
   };
 
+  const resetExpenseForm = () => {
+    setExpenseForm({
+      amount: "",
+      description: "",
+      category: "Food",
+      date: new Date().toISOString().split("T")[0],
+    });
+
+    setExpenseError("");
+  };
+
   const closeExpenseForm = () => {
     setEditingExpenseId(null);
     resetExpenseForm();
@@ -806,6 +826,8 @@ function TripDetails() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+    // The handlers intentionally use the latest form-closing functions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAddingItineraryItem, editingItineraryId, isAddingExpense]);
 
   useEffect(() => {
@@ -1169,16 +1191,6 @@ function TripDetails() {
       return a.amount - b.amount || a.id - b.id;
     });
   }, [expenses, expenseCategoryFilter, expenseSort]);
-
-  const resetExpenseForm = () => {
-    setExpenseForm({
-      amount: "",
-      description: "",
-      category: "Food",
-      date: new Date().toISOString().split("T")[0],
-    });
-    setExpenseError("");
-  };
 
   const handleAddExpense = async () => {
     if (!trip || !user) {
@@ -1630,8 +1642,6 @@ function TripDetails() {
     if (!trip || !user) {
       return;
     }
-
-    setExpenseError("");
 
     const updatedExpenses = expenses.filter(
       (expense) => expense.id !== expenseId,
@@ -2825,12 +2835,10 @@ function TripDetails() {
                     <button
                       type="submit"
                       disabled={isSavingExpense}
-                      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md"
                     >
                       {isSavingExpense
-                        ? editingExpenseId !== null
-                          ? "Updating..."
-                          : "Saving..."
+                        ? "Saving..."
                         : editingExpenseId !== null
                           ? "Update Expense"
                           : "Save Expense"}

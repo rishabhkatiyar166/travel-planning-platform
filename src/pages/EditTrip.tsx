@@ -3,16 +3,11 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 
-import {
-  getTripById,
-  updateTrip,
-  type Trip,
-} from "../services/tripService";
+import { getTripById, updateTrip, type Trip } from "../services/tripService";
 
 import LocationSearch, {
   type LocationResult,
 } from "../components/LocationSearch";
-
 
 /*
  * ========================================
@@ -27,25 +22,19 @@ function EditTrip() {
 
   const { user } = useAuth();
 
-
   /*
    * ========================================
    * TRIP STATE
    * ========================================
    */
 
-  const [trip, setTrip] =
-    useState<Trip | null>(null);
+  const [trip, setTrip] = useState<Trip | null>(null);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [saving, setSaving] =
-    useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [error, setError] =
-    useState("");
-
+  const [error, setError] = useState("");
 
   /*
    * ========================================
@@ -53,24 +42,17 @@ function EditTrip() {
    * ========================================
    */
 
-  const [origin, setOrigin] =
-    useState("");
+  const [origin, setOrigin] = useState("");
 
-  const [destination, setDestination] =
-    useState("");
+  const [destination, setDestination] = useState("");
 
-  const [duration, setDuration] =
-    useState("");
+  const [duration, setDuration] = useState("");
 
-  const [budget, setBudget] =
-    useState("");
+  const [budget, setBudget] = useState("");
 
-  const [travelDate, setTravelDate] =
-    useState("");
+  const [travelDate, setTravelDate] = useState("");
 
-  const [travelers, setTravelers] =
-    useState("1");
-
+  const [travelers, setTravelers] = useState("1");
 
   /*
    * ========================================
@@ -81,14 +63,12 @@ function EditTrip() {
    * from the search suggestions.
    */
 
-  const [selectedOrigin, setSelectedOrigin] =
+  const [selectedOrigin, setSelectedOrigin] = useState<LocationResult | null>(
+    null,
+  );
+
+  const [selectedDestination, setSelectedDestination] =
     useState<LocationResult | null>(null);
-
-  const [
-    selectedDestination,
-    setSelectedDestination,
-  ] = useState<LocationResult | null>(null);
-
 
   /*
    * ========================================
@@ -96,30 +76,21 @@ function EditTrip() {
    * ========================================
    */
 
-  const [originLatitude, setOriginLatitude] =
-    useState<number | undefined>(
-      undefined
-    );
-
-  const [originLongitude, setOriginLongitude] =
-    useState<number | undefined>(
-      undefined
-    );
-
-  const [
-    destinationLatitude,
-    setDestinationLatitude,
-  ] = useState<number | undefined>(
-    undefined
+  const [originLatitude, setOriginLatitude] = useState<number | undefined>(
+    undefined,
   );
 
-  const [
-    destinationLongitude,
-    setDestinationLongitude,
-  ] = useState<number | undefined>(
-    undefined
+  const [originLongitude, setOriginLongitude] = useState<number | undefined>(
+    undefined,
   );
 
+  const [destinationLatitude, setDestinationLatitude] = useState<
+    number | undefined
+  >(undefined);
+
+  const [destinationLongitude, setDestinationLongitude] = useState<
+    number | undefined
+  >(undefined);
 
   /*
    * ========================================
@@ -156,7 +127,7 @@ function EditTrip() {
        * Get ONLY this user's trip from Supabase.
        */
 
-      let selectedTrip: Trip | null = null;
+      let selectedTrip: Trip | null;
 
       try {
         selectedTrip = await getTripById(id, user.id);
@@ -176,136 +147,92 @@ function EditTrip() {
        */
 
       if (!selectedTrip) {
+        setError("Trip not found or you do not have permission to edit it.");
 
-      setError(
-        "Trip not found or you do not have permission to edit it."
-      );
+        setLoading(false);
 
-      setLoading(false);
+        return;
+      }
 
-      return;
+      /*
+       * Store complete trip.
+       */
 
-    }
+      setTrip(selectedTrip);
 
+      /*
+       * ========================================
+       * LOAD FORM DATA
+       * ========================================
+       */
 
-    /*
-     * Store complete trip.
-     */
+      setOrigin(selectedTrip.origin);
 
-    setTrip(selectedTrip);
+      setDestination(selectedTrip.destination);
 
+      setDuration(selectedTrip.duration);
 
-    /*
-     * ========================================
-     * LOAD FORM DATA
-     * ========================================
-     */
+      setBudget(selectedTrip.budget);
 
-    setOrigin(
-      selectedTrip.origin
-    );
+      setTravelDate(selectedTrip.travelDate || "");
 
-    setDestination(
-      selectedTrip.destination
-    );
+      setTravelers(String(selectedTrip.travelers || 1));
 
-    setDuration(
-      selectedTrip.duration
-    );
+      /*
+       * ========================================
+       * LOAD COORDINATES
+       * ========================================
+       */
 
-    setBudget(
-      selectedTrip.budget
-    );
+      setOriginLatitude(selectedTrip.originLatitude);
 
-    setTravelDate(
-      selectedTrip.travelDate || ""
-    );
+      setOriginLongitude(selectedTrip.originLongitude);
 
-    setTravelers(
-      String(
-        selectedTrip.travelers || 1
-      )
-    );
+      setDestinationLatitude(selectedTrip.destinationLatitude);
 
+      setDestinationLongitude(selectedTrip.destinationLongitude);
 
-    /*
-     * ========================================
-     * LOAD COORDINATES
-     * ========================================
-     */
+      /*
+       * ========================================
+       * RESTORE SELECTED ORIGIN
+       * ========================================
+       *
+       * Existing trips don't store the
+       * Open-Meteo location ID, so we use
+       * a temporary ID.
+       *
+       * The coordinates are the important part.
+       */
 
-    setOriginLatitude(
-      selectedTrip.originLatitude
-    );
+      if (
+        selectedTrip.originLatitude !== undefined &&
+        selectedTrip.originLongitude !== undefined
+      ) {
+        setSelectedOrigin({
+          id: -1,
+          name: selectedTrip.origin,
+          latitude: selectedTrip.originLatitude,
+          longitude: selectedTrip.originLongitude,
+        });
+      }
 
-    setOriginLongitude(
-      selectedTrip.originLongitude
-    );
+      /*
+       * ========================================
+       * RESTORE SELECTED DESTINATION
+       * ========================================
+       */
 
-    setDestinationLatitude(
-      selectedTrip.destinationLatitude
-    );
-
-    setDestinationLongitude(
-      selectedTrip.destinationLongitude
-    );
-
-
-    /*
-     * ========================================
-     * RESTORE SELECTED ORIGIN
-     * ========================================
-     *
-     * Existing trips don't store the
-     * Open-Meteo location ID, so we use
-     * a temporary ID.
-     *
-     * The coordinates are the important part.
-     */
-
-    if (
-      selectedTrip.originLatitude !==
-        undefined &&
-      selectedTrip.originLongitude !==
-        undefined
-    ) {
-
-      setSelectedOrigin({
-        id: -1,
-        name: selectedTrip.origin,
-        latitude:
-          selectedTrip.originLatitude,
-        longitude:
-          selectedTrip.originLongitude,
-      });
-
-    }
-
-
-    /*
-     * ========================================
-     * RESTORE SELECTED DESTINATION
-     * ========================================
-     */
-
-    if (
-      selectedTrip.destinationLatitude !==
-        undefined &&
-      selectedTrip.destinationLongitude !==
-        undefined
-    ) {
-
-      setSelectedDestination({
-        id: -2,
-        name: selectedTrip.destination,
-        latitude:
-          selectedTrip.destinationLatitude,
-        longitude:
-          selectedTrip.destinationLongitude,
-      });
-
-    }
-
+      if (
+        selectedTrip.destinationLatitude !== undefined &&
+        selectedTrip.destinationLongitude !== undefined
+      ) {
+        setSelectedDestination({
+          id: -2,
+          name: selectedTrip.destination,
+          latitude: selectedTrip.destinationLatitude,
+          longitude: selectedTrip.destinationLongitude,
+        });
+      }
 
       if (mounted) {
         setLoading(false);
@@ -319,21 +246,16 @@ function EditTrip() {
     };
   }, [id, user, navigate]);
 
-
   /*
    * ========================================
    * SUBMIT
    * ========================================
    */
 
-  const handleSubmit = async (
-    event: React.FormEvent<HTMLFormElement>
-  ) => {
-
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     setError("");
-
 
     /*
      * ========================================
@@ -342,13 +264,10 @@ function EditTrip() {
      */
 
     if (!user) {
-
       navigate("/login");
 
       return;
-
     }
-
 
     /*
      * ========================================
@@ -357,13 +276,10 @@ function EditTrip() {
      */
 
     if (!id) {
-
       setError("Trip not found.");
 
       return;
-
     }
-
 
     /*
      * ========================================
@@ -372,15 +288,10 @@ function EditTrip() {
      */
 
     if (!origin.trim()) {
-
-      setError(
-        "Please select your starting location."
-      );
+      setError("Please select your starting location.");
 
       return;
-
     }
-
 
     /*
      * ========================================
@@ -389,15 +300,10 @@ function EditTrip() {
      */
 
     if (!destination.trim()) {
-
-      setError(
-        "Please select your destination."
-      );
+      setError("Please select your destination.");
 
       return;
-
     }
-
 
     /*
      * ========================================
@@ -413,26 +319,18 @@ function EditTrip() {
      */
 
     if (!selectedOrigin) {
-
       setError(
-        "Please select your starting location from the search suggestions."
+        "Please select your starting location from the search suggestions.",
       );
 
       return;
-
     }
-
 
     if (!selectedDestination) {
-
-      setError(
-        "Please select your destination from the search suggestions."
-      );
+      setError("Please select your destination from the search suggestions.");
 
       return;
-
     }
-
 
     /*
      * ========================================
@@ -440,37 +338,21 @@ function EditTrip() {
      * ========================================
      */
 
-    if (
-      selectedOrigin.id ===
-      selectedDestination.id
-    ) {
-
-      setError(
-        "Starting location and destination cannot be the same."
-      );
+    if (selectedOrigin.id === selectedDestination.id) {
+      setError("Starting location and destination cannot be the same.");
 
       return;
-
     }
-
 
     /*
      * Also compare names.
      */
 
-    if (
-      origin.trim().toLowerCase() ===
-      destination.trim().toLowerCase()
-    ) {
-
-      setError(
-        "Starting location and destination cannot be the same."
-      );
+    if (origin.trim().toLowerCase() === destination.trim().toLowerCase()) {
+      setError("Starting location and destination cannot be the same.");
 
       return;
-
     }
-
 
     /*
      * ========================================
@@ -479,15 +361,10 @@ function EditTrip() {
      */
 
     if (!duration.trim()) {
-
-      setError(
-        "Please enter the trip duration."
-      );
+      setError("Please enter the trip duration.");
 
       return;
-
     }
-
 
     /*
      * ========================================
@@ -507,38 +384,18 @@ function EditTrip() {
      */
 
     if (!budget.trim()) {
-
-      setError(
-        "Please enter your budget."
-      );
+      setError("Please enter your budget.");
 
       return;
-
     }
 
+    const budgetNumber = Number(budget.replace(/[₹,\s]/g, ""));
 
-    const budgetNumber =
-      Number(
-        budget
-          .replace(/[₹,\s]/g, "")
-      );
-
-
-    if (
-      !Number.isFinite(
-        budgetNumber
-      ) ||
-      budgetNumber <= 0
-    ) {
-
-      setError(
-        "Please enter a valid budget greater than ₹0."
-      );
+    if (!Number.isFinite(budgetNumber) || budgetNumber <= 0) {
+      setError("Please enter a valid budget greater than ₹0.");
 
       return;
-
     }
-
 
     /*
      * ========================================
@@ -547,15 +404,10 @@ function EditTrip() {
      */
 
     if (!travelDate) {
-
-      setError(
-        "Please select your travel date."
-      );
+      setError("Please select your travel date.");
 
       return;
-
     }
-
 
     /*
      * ========================================
@@ -563,26 +415,17 @@ function EditTrip() {
      * ========================================
      */
 
-    const travelerCount =
-      Number(travelers);
-
+    const travelerCount = Number(travelers);
 
     if (
-      !Number.isInteger(
-        travelerCount
-      ) ||
+      !Number.isInteger(travelerCount) ||
       travelerCount < 1 ||
       travelerCount > 50
     ) {
-
-      setError(
-        "Travelers must be between 1 and 50."
-      );
+      setError("Travelers must be between 1 and 50.");
 
       return;
-
     }
-
 
     /*
      * ========================================
@@ -591,14 +434,10 @@ function EditTrip() {
      */
 
     const hasOriginCoordinates =
-      originLatitude !== undefined &&
-      originLongitude !== undefined;
-
+      originLatitude !== undefined && originLongitude !== undefined;
 
     const hasDestinationCoordinates =
-      destinationLatitude !== undefined &&
-      destinationLongitude !== undefined;
-
+      destinationLatitude !== undefined && destinationLongitude !== undefined;
 
     /*
      * New locations selected from the
@@ -607,26 +446,20 @@ function EditTrip() {
      */
 
     if (!hasOriginCoordinates) {
-
       setError(
-        "Starting location coordinates are missing. Please select the location again."
+        "Starting location coordinates are missing. Please select the location again.",
       );
 
       return;
-
     }
-
 
     if (!hasDestinationCoordinates) {
-
       setError(
-        "Destination coordinates are missing. Please select the location again."
+        "Destination coordinates are missing. Please select the location again.",
       );
 
       return;
-
     }
-
 
     /*
      * ========================================
@@ -635,20 +468,13 @@ function EditTrip() {
      */
 
     if (
-      originLatitude ===
-        destinationLatitude &&
-      originLongitude ===
-        destinationLongitude
+      originLatitude === destinationLatitude &&
+      originLongitude === destinationLongitude
     ) {
-
-      setError(
-        "Starting location and destination cannot be the same."
-      );
+      setError("Starting location and destination cannot be the same.");
 
       return;
-
     }
-
 
     /*
      * ========================================
@@ -658,65 +484,47 @@ function EditTrip() {
 
     setSaving(true);
 
-
     /*
      * Keep the budget format consistent
      * with PlanTrip.
      */
 
-    const formattedBudget =
-      `₹${budgetNumber.toLocaleString(
-        "en-IN"
-      )}`;
-
+    const formattedBudget = `₹${budgetNumber.toLocaleString("en-IN")}`;
 
     try {
-      const updatedTrip = await updateTrip(
-        id,
-        user.id,
-        {
+      const updatedTrip = await updateTrip(id, user.id, {
+        /*
+         * Route
+         */
 
-          /*
-           * Route
-           */
+        origin: origin.trim(),
 
-          origin:
-            origin.trim(),
+        destination: destination.trim(),
 
-          destination:
-            destination.trim(),
+        /*
+         * Trip details
+         */
 
+        duration: duration.trim(),
 
-          /*
-           * Trip details
-           */
+        budget: formattedBudget,
 
-          duration:
-            duration.trim(),
+        travelDate,
 
-          budget:
-            formattedBudget,
+        travelers: travelerCount,
 
-          travelDate,
+        /*
+         * Coordinates
+         */
 
-          travelers:
-            travelerCount,
+        originLatitude,
 
+        originLongitude,
 
-          /*
-           * Coordinates
-           */
+        destinationLatitude,
 
-          originLatitude,
-
-          originLongitude,
-
-          destinationLatitude,
-
-          destinationLongitude,
-
-        }
-      );
+        destinationLongitude,
+      });
 
       /*
        * ========================================
@@ -746,7 +554,6 @@ function EditTrip() {
     }
   };
 
-
   /*
    * ========================================
    * LOADING
@@ -754,29 +561,16 @@ function EditTrip() {
    */
 
   if (loading) {
-
     return (
-
       <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
-
         <div className="mx-auto max-w-3xl">
-
           <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-
-            <p className="text-slate-600">
-              Loading trip...
-            </p>
-
+            <p className="text-slate-600">Loading trip...</p>
           </div>
-
         </div>
-
       </main>
-
     );
-
   }
-
 
   /*
    * ========================================
@@ -785,30 +579,22 @@ function EditTrip() {
    */
 
   if (!trip) {
-
     return (
-
       <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6 sm:py-16">
-
         <div className="mx-auto max-w-3xl">
-
           <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-2xl">
               ✈️
             </div>
-
 
             <h1 className="mt-6 text-3xl font-bold text-slate-900">
               Trip Not Found
             </h1>
 
-
             <p className="mt-3 text-slate-600">
               {error ||
                 "This trip doesn't exist or doesn't belong to your account."}
             </p>
-
 
             <Link
               to="/saved-trips"
@@ -816,17 +602,11 @@ function EditTrip() {
             >
               Back to Saved Trips
             </Link>
-
           </div>
-
         </div>
-
       </main>
-
     );
-
   }
-
 
   /*
    * ========================================
@@ -835,12 +615,8 @@ function EditTrip() {
    */
 
   return (
-
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
-
       <div className="mx-auto max-w-3xl">
-
-
         {/* ========================================
             HEADER
         ======================================== */}
@@ -878,7 +654,6 @@ function EditTrip() {
           </div>
         </div>
 
-
         {/* ========================================
             FORM CARD
         ======================================== */}
@@ -887,28 +662,19 @@ function EditTrip() {
           onSubmit={handleSubmit}
           className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8 lg:p-10"
         >
-
-
           {/* ========================================
               ERROR
           ======================================== */}
 
           {error && (
-
             <div
               role="alert"
               className="mb-7 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4"
             >
-
               <span className="mt-0.5">⚠️</span>
-              <p className="text-sm font-medium text-red-700">
-                {error}
-              </p>
-
+              <p className="text-sm font-medium text-red-700">{error}</p>
             </div>
-
           )}
-
 
           {/* ========================================
               ROUTE
@@ -929,182 +695,126 @@ function EditTrip() {
               </p>
             </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-
-
-            {/* ========================================
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* ========================================
                 ORIGIN
             ======================================== */}
 
-            <LocationSearch
-              id="origin"
-              label="Starting Location"
-              value={origin}
-              placeholder="Search starting location..."
-              onChange={(value) => {
+              <LocationSearch
+                id="origin"
+                label="Starting Location"
+                value={origin}
+                placeholder="Search starting location..."
+                onChange={(value) => {
+                  setOrigin(value);
 
-                setOrigin(value);
+                  /*
+                   * User manually changed the text.
+                   *
+                   * Therefore the previous location
+                   * and coordinates are no longer valid.
+                   */
 
-                /*
-                 * User manually changed the text.
-                 *
-                 * Therefore the previous location
-                 * and coordinates are no longer valid.
-                 */
+                  setSelectedOrigin(null);
 
-                setSelectedOrigin(null);
+                  setOriginLatitude(undefined);
 
-                setOriginLatitude(
-                  undefined
-                );
+                  setOriginLongitude(undefined);
+                }}
+                onSelect={(location) => {
+                  /*
+                   * Save selected location name.
+                   */
 
-                setOriginLongitude(
-                  undefined
-                );
+                  setOrigin(location.name);
 
-              }}
-              onSelect={(location) => {
+                  /*
+                   * Save complete location.
+                   */
 
-                /*
-                 * Save selected location name.
-                 */
+                  setSelectedOrigin(location);
 
-                setOrigin(
-                  location.name
-                );
+                  /*
+                   * IMPORTANT:
+                   *
+                   * Update coordinates too.
+                   */
 
+                  setOriginLatitude(location.latitude);
 
-                /*
-                 * Save complete location.
-                 */
+                  setOriginLongitude(location.longitude);
+                }}
+              />
 
-                setSelectedOrigin(
-                  location
-                );
-
-
-                /*
-                 * IMPORTANT:
-                 *
-                 * Update coordinates too.
-                 */
-
-                setOriginLatitude(
-                  location.latitude
-                );
-
-                setOriginLongitude(
-                  location.longitude
-                );
-
-              }}
-            />
-
-
-            {/* ========================================
+              {/* ========================================
                 DESTINATION
             ======================================== */}
 
-            <LocationSearch
-              id="destination"
-              label="Destination"
-              value={destination}
-              placeholder="Search destination..."
-              onChange={(value) => {
+              <LocationSearch
+                id="destination"
+                label="Destination"
+                value={destination}
+                placeholder="Search destination..."
+                onChange={(value) => {
+                  setDestination(value);
 
-                setDestination(value);
+                  /*
+                   * Previous selection is no
+                   * longer valid.
+                   */
 
-                /*
-                 * Previous selection is no
-                 * longer valid.
-                 */
+                  setSelectedDestination(null);
 
-                setSelectedDestination(
-                  null
-                );
+                  setDestinationLatitude(undefined);
 
-                setDestinationLatitude(
-                  undefined
-                );
+                  setDestinationLongitude(undefined);
+                }}
+                onSelect={(location) => {
+                  /*
+                   * Save selected location name.
+                   */
 
-                setDestinationLongitude(
-                  undefined
-                );
+                  setDestination(location.name);
 
-              }}
-              onSelect={(location) => {
+                  /*
+                   * Save complete location.
+                   */
 
-                /*
-                 * Save selected location name.
-                 */
+                  setSelectedDestination(location);
 
-                setDestination(
-                  location.name
-                );
+                  /*
+                   * Update coordinates.
+                   */
 
+                  setDestinationLatitude(location.latitude);
 
-                /*
-                 * Save complete location.
-                 */
-
-                setSelectedDestination(
-                  location
-                );
-
-
-                /*
-                 * Update coordinates.
-                 */
-
-                setDestinationLatitude(
-                  location.latitude
-                );
-
-                setDestinationLongitude(
-                  location.longitude
-                );
-
-              }}
-            />
-
+                  setDestinationLongitude(location.longitude);
+                }}
+              />
+            </div>
           </div>
-          </div>
-
 
           {/* ========================================
               SELECTED LOCATION INFORMATION
           ======================================== */}
 
-          {(selectedOrigin ||
-            selectedDestination) && (
-
+          {(selectedOrigin || selectedDestination) && (
             <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-
               <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
                 Selected Locations
               </p>
 
-
               <div className="mt-4 space-y-4">
-
-
                 {/* Origin */}
 
                 {selectedOrigin && (
-
                   <div className="flex items-start gap-3">
-
-                    <span className="text-lg">
-                      📍
-                    </span>
-
+                    <span className="text-lg">📍</span>
 
                     <div>
-
                       <p className="text-xs text-slate-500">
                         Starting Location
                       </p>
-
 
                       <p className="font-semibold text-slate-900">
                         {selectedOrigin.name}
@@ -1113,42 +823,22 @@ function EditTrip() {
                           : ""}
                       </p>
 
-
                       <p className="mt-1 text-xs text-slate-500">
-                        Coordinates:{" "}
-                        {selectedOrigin.latitude.toFixed(
-                          4
-                        )}
-                        ,{" "}
-                        {selectedOrigin.longitude.toFixed(
-                          4
-                        )}
+                        Coordinates: {selectedOrigin.latitude.toFixed(4)},{" "}
+                        {selectedOrigin.longitude.toFixed(4)}
                       </p>
-
                     </div>
-
                   </div>
-
                 )}
-
 
                 {/* Destination */}
 
                 {selectedDestination && (
-
                   <div className="flex items-start gap-3">
-
-                    <span className="text-lg">
-                      🏁
-                    </span>
-
+                    <span className="text-lg">🏁</span>
 
                     <div>
-
-                      <p className="text-xs text-slate-500">
-                        Destination
-                      </p>
-
+                      <p className="text-xs text-slate-500">Destination</p>
 
                       <p className="font-semibold text-slate-900">
                         {selectedDestination.name}
@@ -1157,30 +847,16 @@ function EditTrip() {
                           : ""}
                       </p>
 
-
                       <p className="mt-1 text-xs text-slate-500">
-                        Coordinates:{" "}
-                        {selectedDestination.latitude.toFixed(
-                          4
-                        )}
-                        ,{" "}
-                        {selectedDestination.longitude.toFixed(
-                          4
-                        )}
+                        Coordinates: {selectedDestination.latitude.toFixed(4)},{" "}
+                        {selectedDestination.longitude.toFixed(4)}
                       </p>
-
                     </div>
-
                   </div>
-
                 )}
-
               </div>
-
             </div>
-
           )}
-
 
           {/* ========================================
               TRIP DETAILS
@@ -1201,136 +877,97 @@ function EditTrip() {
               </p>
             </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-
-
-            {/* ========================================
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* ========================================
                 TRAVEL DATE
             ======================================== */}
 
-            <div>
+              <div>
+                <label
+                  htmlFor="travelDate"
+                  className="block text-sm font-semibold text-slate-700"
+                >
+                  Travel Date
+                </label>
 
-              <label
-                htmlFor="travelDate"
-                className="block text-sm font-semibold text-slate-700"
-              >
-                Travel Date
-              </label>
+                <input
+                  id="travelDate"
+                  type="date"
+                  value={travelDate}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={(event) => setTravelDate(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 shadow-sm outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                />
+              </div>
 
-
-              <input
-                id="travelDate"
-                type="date"
-                value={travelDate}
-                min={
-                  new Date()
-                    .toISOString()
-                    .split("T")[0]
-                }
-                onChange={(event) =>
-                  setTravelDate(
-                    event.target.value
-                  )
-                }
-                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 shadow-sm outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
-              />
-
-            </div>
-
-
-            {/* ========================================
+              {/* ========================================
                 TRAVELERS
             ======================================== */}
 
-            <div>
+              <div>
+                <label
+                  htmlFor="travelers"
+                  className="block text-sm font-semibold text-slate-700"
+                >
+                  Number of Travelers
+                </label>
 
-              <label
-                htmlFor="travelers"
-                className="block text-sm font-semibold text-slate-700"
-              >
-                Number of Travelers
-              </label>
+                <input
+                  id="travelers"
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={travelers}
+                  onChange={(event) => setTravelers(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 shadow-sm outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                />
+              </div>
 
-
-              <input
-                id="travelers"
-                type="number"
-                min="1"
-                max="50"
-                value={travelers}
-                onChange={(event) =>
-                  setTravelers(
-                    event.target.value
-                  )
-                }
-                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 shadow-sm outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
-              />
-
-            </div>
-
-
-            {/* ========================================
+              {/* ========================================
                 DURATION
             ======================================== */}
 
-            <div>
+              <div>
+                <label
+                  htmlFor="duration"
+                  className="block text-sm font-semibold text-slate-700"
+                >
+                  Trip Duration
+                </label>
 
-              <label
-                htmlFor="duration"
-                className="block text-sm font-semibold text-slate-700"
-              >
-                Trip Duration
-              </label>
+                <input
+                  id="duration"
+                  type="text"
+                  value={duration}
+                  onChange={(event) => setDuration(event.target.value)}
+                  placeholder="e.g. 5 days"
+                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 shadow-sm outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100 placeholder:text-slate-400"
+                />
+              </div>
 
-
-              <input
-                id="duration"
-                type="text"
-                value={duration}
-                onChange={(event) =>
-                  setDuration(
-                    event.target.value
-                  )
-                }
-                placeholder="e.g. 5 days"
-                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 shadow-sm outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100 placeholder:text-slate-400"
-              />
-
-            </div>
-
-
-            {/* ========================================
+              {/* ========================================
                 BUDGET
             ======================================== */}
 
-            <div>
+              <div>
+                <label
+                  htmlFor="budget"
+                  className="block text-sm font-semibold text-slate-700"
+                >
+                  Estimated Budget
+                </label>
 
-              <label
-                htmlFor="budget"
-                className="block text-sm font-semibold text-slate-700"
-              >
-                Estimated Budget
-              </label>
-
-
-              <input
-                id="budget"
-                type="text"
-                value={budget}
-                onChange={(event) =>
-                  setBudget(
-                    event.target.value
-                  )
-                }
-                placeholder="e.g. ₹25,000"
-                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 shadow-sm outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100 placeholder:text-slate-400"
-              />
-
+                <input
+                  id="budget"
+                  type="text"
+                  value={budget}
+                  onChange={(event) => setBudget(event.target.value)}
+                  placeholder="e.g. ₹25,000"
+                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 shadow-sm outline-none transition hover:border-slate-400 focus:border-slate-900 focus:ring-4 focus:ring-slate-100 placeholder:text-slate-400"
+                />
+              </div>
             </div>
-
           </div>
-          </div>
-
 
           {/* ========================================
               COORDINATE INFORMATION
@@ -1338,61 +975,40 @@ function EditTrip() {
 
           {(originLatitude !== undefined ||
             destinationLatitude !== undefined) && (
-
             <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-
               <div className="flex gap-3">
-
-                <span className="text-lg">
-                  🗺️
-                </span>
-
+                <span className="text-lg">🗺️</span>
 
                 <div>
-
                   <p className="font-semibold text-slate-900">
                     Map coordinates available
                   </p>
 
-
                   <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Location coordinates are stored
-                    with this trip. If you change a
-                    location, select the new location
-                    from the search suggestions so
-                    the map route is updated correctly.
+                    Location coordinates are stored with this trip. If you
+                    change a location, select the new location from the search
+                    suggestions so the map route is updated correctly.
                   </p>
-
                 </div>
-
               </div>
-
             </div>
-
           )}
-
 
           {/* ========================================
               BUTTONS
           ======================================== */}
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-
             {/* Cancel */}
 
             <button
               type="button"
-              onClick={() =>
-                navigate(
-                  `/saved-trips/${trip.id}`
-                )
-              }
+              onClick={() => navigate(`/saved-trips/${trip.id}`)}
               disabled={saving}
               className="w-full rounded-xl border border-slate-300 bg-white px-6 py-3.5 font-semibold text-slate-800 transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               Cancel
             </button>
-
 
             {/* Save */}
 
@@ -1401,21 +1017,12 @@ function EditTrip() {
               disabled={saving}
               className="w-full rounded-xl bg-slate-900 px-6 py-3.5 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 sm:flex-1"
             >
-
-              {saving
-                ? "Saving Changes..."
-                : "Save Changes"}
-
+              {saving ? "Saving Changes..." : "Save Changes"}
             </button>
-
           </div>
-
         </form>
-
       </div>
-
     </main>
-
   );
 }
 
