@@ -1,21 +1,22 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import PublicRoute from "./components/PublicRoute";
 
+import PublicRoute from "./components/PublicRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/layout/Navbar";
 
-import Home from "./pages/Home";
-import PlanTrip from "./pages/PlanTrip";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ResetPassword from "./pages/ResetPassword";
-import Dashboard from "./pages/Dashboard";
-import SavedTrips from "./pages/SavedTrips";
-import TripDetails from "./pages/TripDetails";
-import EditTrip from "./pages/EditTrip";
-import DestinationPlaces from "./pages/DestinationPlaces";
-import NotFound from "./pages/NotFound";
-
-import ProtectedRoute from "./components/ProtectedRoute";
+// Lazy-loaded pages
+const Home = lazy(() => import("./pages/Home"));
+const PlanTrip = lazy(() => import("./pages/PlanTrip"));
+const Login = lazy(() => import("./pages/Login"));
+const Signup = lazy(() => import("./pages/Signup"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const SavedTrips = lazy(() => import("./pages/SavedTrips"));
+const TripDetails = lazy(() => import("./pages/TripDetails"));
+const EditTrip = lazy(() => import("./pages/EditTrip"));
+const DestinationPlaces = lazy(() => import("./pages/DestinationPlaces"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 function App() {
   return (
@@ -23,57 +24,67 @@ function App() {
       <div className="min-h-screen bg-slate-50">
         <Navbar />
 
-        <Routes>
-          {/* ========================================
-              PUBLIC ROUTES
-          ======================================== */}
+        <Suspense
+          fallback={
+            <div className="flex min-h-[60vh] items-center justify-center">
+              <div className="text-sm text-slate-500">
+                Loading...
+              </div>
+            </div>
+          }
+        >
+          <Routes>
+            {/* ========================================
+                PUBLIC ROUTES
+            ======================================== */}
 
-          <Route path="/" element={<Home />} />
+            <Route path="/" element={<Home />} />
 
-          <Route element={<PublicRoute />}>
-            <Route path="/login" element={<Login />} />
+            <Route element={<PublicRoute />}>
+              <Route path="/login" element={<Login />} />
 
-            <Route path="/signup" element={<Signup />} />
+              <Route path="/signup" element={<Signup />} />
 
-            <Route
-              path="/reset-password"
-              element={<ResetPassword />}
-            />
-          </Route>
+              <Route
+                path="/reset-password"
+                element={<ResetPassword />}
+              />
+            </Route>
 
-          {/* ========================================
-              PROTECTED ROUTES
-          ======================================== */}
+            {/* ========================================
+                PROTECTED ROUTES
+            ======================================== */}
 
-          <Route element={<ProtectedRoute />}>
-            <Route path="/plan-trip" element={<PlanTrip />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/plan-trip" element={<PlanTrip />} />
 
-            <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
 
-            <Route path="/saved-trips" element={<SavedTrips />} />
+              <Route path="/saved-trips" element={<SavedTrips />} />
 
-            <Route
-              path="/saved-trips/:id"
-              element={<TripDetails />}
-            />
+              <Route
+                path="/saved-trips/:id"
+                element={<TripDetails />}
+              />
 
-            <Route
-              path="/saved-trips/:id/edit"
-              element={<EditTrip />}
-            />
+              <Route
+                path="/saved-trips/:id/edit"
+                element={<EditTrip />}
+              />
 
-            <Route
-              path="/destination-places"
-              element={<DestinationPlaces />}
-            />
-          </Route>
+              <Route
+                path="/destination-places"
+                element={<DestinationPlaces />}
+              />
+            </Route>
 
-          {/* ========================================
-              404 ROUTE
-          ======================================== */}
+            {/* ========================================
+                404 ROUTE
+            ======================================== */}
 
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </div>
     </BrowserRouter>
   );
