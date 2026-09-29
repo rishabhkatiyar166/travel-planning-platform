@@ -1,75 +1,178 @@
-# React + TypeScript + Vite
+# TravelPlan ✈️
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern travel planning platform built with React, TypeScript, and Supabase that allows users to create, manage, and organize their trips in one place.
 
-Currently, two official plugins are available:
+## 🌐 Live Demo
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+https://travel-planning-platform-two.vercel.app
 
-## React Compiler
+## 📌 About the Project
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+TravelPlan is a full-stack travel planning web application designed to simplify trip organization.
 
-## Expanding the ESLint configuration
+Users can create trips, manage itineraries, track expenses, view destinations on maps, and access their saved trips securely from their account.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+The application uses Supabase for authentication and database storage, with Row Level Security (RLS) ensuring that users can only access their own trip data.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## ✨ Features
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 🔐 Authentication
 
-```
+- User registration
+- Email verification
+- Secure login
+- Logout
+- Forgot password
+- Password reset
+- Persistent authentication sessions
+- Protected routes
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+### 🗺️ Trip Planning
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- Create a new trip
+- Select origin and destination
+- Set travel duration
+- Set travel budget
+- Set travel date
+- Specify number of travelers
+- Store destination coordinates
+- View trip details
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 📋 Trip Management
 
-```
+- View all saved trips
+- Search trips
+- Filter trips
+- Sort trips
+- Edit trips
+- Delete trips
+- View individual trip details
+- User-specific trip data
+
+### 📝 Itinerary Management
+
+- Add itinerary items
+- Edit itinerary items
+- Delete itinerary items
+- Organize activities by day
+- Track itinerary completion
+- View itinerary progress
+
+### 💰 Expense Management
+
+- Add expenses
+- Edit expenses
+- Delete expenses
+- Categorize expenses
+- Filter expenses by category
+- Sort expenses
+- Track total expenses
+- Compare expenses with the trip budget
+- Import expenses using CSV
+
+### 🗺️ Maps & Destinations
+
+- Interactive maps
+- Origin and destination locations
+- Route information
+- Destination places
+- Location-based trip information
+
+### 📱 Responsive Design
+
+- Desktop-friendly interface
+- Mobile-friendly navigation
+- Responsive trip cards
+- Responsive dashboard
+- Mobile hamburger menu
+
+### 🛡️ Security
+
+- Supabase Authentication
+- Supabase Row Level Security (RLS)
+- User-specific database queries
+- Protected application routes
+- Environment variables for Supabase credentials
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+
+- React
+- TypeScript
+- Vite
+- React Router
+- Tailwind CSS
+
+### Backend / Database
+
+- Supabase
+- PostgreSQL
+- Supabase Authentication
+- Row Level Security (RLS)
+
+### Maps
+
+- React Leaflet
+- Leaflet
+
+### Development Tools
+
+- ESLint
+- Git
+- GitHub
+- Vercel
+
+---
+
+## 🏗️ Project Architecture
+
+```text
+TravelPlan
+│
+├── public/
+│
+├── src/
+│   │
+│   ├── components/
+│   │   ├── layout/
+│   │   │   └── Navbar.tsx
+│   │   ├── ProtectedRoute.tsx
+│   │   └── PublicRoute.tsx
+│   │
+│   ├── context/
+│   │   ├── AuthContext.tsx
+│   │   └── ToastContext.tsx
+│   │
+│   ├── pages/
+│   │   ├── Home.tsx
+│   │   ├── Login.tsx
+│   │   ├── Signup.tsx
+│   │   ├── ResetPassword.tsx
+│   │   ├── PlanTrip.tsx
+│   │   ├── Dashboard.tsx
+│   │   ├── SavedTrips.tsx
+│   │   ├── TripDetails.tsx
+│   │   ├── EditTrip.tsx
+│   │   ├── DestinationPlaces.tsx
+│   │   └── NotFound.tsx
+│   │
+│   ├── services/
+│   │   ├── supabaseClient.ts
+│   │   ├── tripService.ts
+│   │   └── itineraryService.ts
+│   │
+│   ├── App.tsx
+│   └── main.tsx
+│
+├── .env
+├── .gitignore
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+├── vercel.json
+└── README.md
