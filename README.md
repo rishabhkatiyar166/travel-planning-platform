@@ -176,3 +176,43 @@ TravelPlan
 ├── vite.config.ts
 ├── vercel.json
 └── README.md
+
+## 🔄 Application Flow
+
+User
+ │
+ ▼
+Home Page
+ │
+ ├── Login
+ │     │
+ │     ▼
+ │   Supabase Authentication
+ │
+ └── Signup
+       │
+       ▼
+   Email Verification
+       │
+       ▼
+     Login
+       │
+       ▼
+    Dashboard
+       │
+       ├── Plan Trip
+       │      │
+       │      ▼
+       │   Supabase Database
+       │
+       ├── Saved Trips
+       │      │
+       │      ▼
+       │   Trip Details
+       │      │
+       │      ├── Itinerary
+       │      ├── Expenses
+       │      ├── Map
+       │      └── Destination Information
+       │
+       └── Edit Trip
